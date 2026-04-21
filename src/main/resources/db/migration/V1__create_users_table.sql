@@ -1,0 +1,9 @@
+-- V1__create_users_table.sql
+CREATE TABLE users (
+    id          VARCHAR(36)   NOT NULL PRIMARY KEY,
+    email       VARCHAR(255)  NOT NULL UNIQUE,
+    password    VARCHAR(255)  NOT NULL,
+    status      ENUM('PENDING','ACTIVE','LOCKED') NOT NULL DEFAULT 'PENDING',
+    created_at  DATETIME(6)   NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+    updated_at  DATETIME(6)   NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6)
+);
