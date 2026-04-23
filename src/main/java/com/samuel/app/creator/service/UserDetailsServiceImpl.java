@@ -25,17 +25,19 @@ public class UserDetailsServiceImpl implements UserDetailsService {
 
     /**
      * Called by AuthenticationManager during login — email is used as the lookup key.
+     * Uses generic error message to prevent user enumeration attacks.
      */
     @Override
     public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
         User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new UsernameNotFoundException("User not found: " + email));
+                .orElseThrow(() -> new UsernameNotFoundException("Authentication failed"));
 
         return buildUserDetails(user);
     }
 
     /**
      * Called by JwtAuthenticationFilter after token validation — userId is the JWT subject.
+     * Token-based lookup failures indicate system issues, not user enumeration attempts.
      */
     public UserDetails loadUserById(String userId) throws UsernameNotFoundException {
         User user = userRepository.findById(userId)

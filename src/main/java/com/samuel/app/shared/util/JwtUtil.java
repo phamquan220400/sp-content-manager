@@ -21,6 +21,15 @@ public class JwtUtil {
     public JwtUtil(
             @Value("${jwt.secret}") String secret,
             @Value("${app.auth.access-token-expiry}") long accessTokenExpirySeconds) {
+        // Validate JWT secret is not default value in production
+        if ("changeme-in-production-use-env-var".equals(secret)) {
+            throw new IllegalArgumentException(
+                "JWT secret must be changed from default value. Set JWT_SECRET environment variable.");
+        }
+        if (secret.length() < 32) {
+            throw new IllegalArgumentException(
+                "JWT secret must be at least 32 characters long for HMAC-SHA256 security.");
+        }
         this.key = Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
         this.accessTokenExpirySeconds = accessTokenExpirySeconds;
     }

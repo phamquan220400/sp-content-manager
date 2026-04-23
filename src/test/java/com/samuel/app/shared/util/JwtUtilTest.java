@@ -65,4 +65,24 @@ class JwtUtilTest {
 
         assertThat(userId).isEqualTo("user-id-123");
     }
+
+    @Test
+    void constructor_defaultSecret_throwsException() {
+        assertThatThrownBy(() -> new JwtUtil("changeme-in-production-use-env-var", EXPIRY_SECONDS))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("JWT secret must be changed from default value");
+    }
+
+    @Test
+    void constructor_shortSecret_throwsException() {
+        assertThatThrownBy(() -> new JwtUtil("short", EXPIRY_SECONDS))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("JWT secret must be at least 32 characters long");
+    }
+
+    @Test
+    void constructor_validSecret_succeeds() {
+        assertThatCode(() -> new JwtUtil("valid-secret-that-is-long-enough-for-hmac-sha256-encryption", EXPIRY_SECONDS))
+                .doesNotThrowAnyException();
+    }
 }

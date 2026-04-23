@@ -1,0 +1,26 @@
+FROM openjdk:17-jdk AS build
+WORKDIR /app
+
+# Install Maven
+RUN curl -fsSL https://repo1.maven.org/maven2/org/apache/maven/apache-maven/3.9.6/apache-maven-3.9.6-bin.tar.gz | tar xzf - -C /opt/ \
+    && ln -s /opt/apache-maven-3.9.6 /opt/maven \
+    && ln -s /opt/maven/bin/mvn /usr/local/bin
+
+# Copy pom.xml to cache dependencies
+COPY pom.xml ./
+RUN mvn dependency:go-offline
+
+# Create an empty target directory
+RUN mkdir -p target
+
+# Use bind mount for live reload
+COPY . .
+
+# Expose debug port
+EXPOSE 8080 5005
+
+# JVM options for debugging
+# ENV JAVA_TOOL_OPTIONS="-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5005"
+
+# Run Spring Boot with debugging enabled
+CMD ["mvn", "spring-boot:run", "-Dspring-boot.run.jvmArguments=-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5005"]

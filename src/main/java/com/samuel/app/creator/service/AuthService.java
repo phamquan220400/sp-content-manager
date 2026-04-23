@@ -56,71 +56,109 @@ public class AuthService {
 
     @Transactional
     public AuthResponse login(LoginRequest request) {
-        // Pre-check lockout before calling AuthenticationManager
-        userRepository.findByEmail(request.email()).ifPresent(user -> {
-            if (user.getLockedUntil() != null && user.getLockedUntil().isAfter(LocalDateTime.now(clock))) {
-                throw new LockedException("Account temporarily locked. Please try again later.");
-            }
-        });
+        // Single user lookup to prevent race conditions and improve performance
+        User user = userRepository.findByEmail(request.email()).orElse(null);
+        
+        // Pre-check lockout if user exists
+        if (user != null && user.getLockedUntil() != null && user.getLockedUntil().isAfter(LocalDateTime.now(clock))) {
+            throw new LockedException("Account temporarily locked. Please try again later.");
+        }
 
         try {
             authenticationManager.authenticate(
                     new UsernamePasswordAuthenticationToken(request.email(), request.password())
             );
         } catch (BadCredentialsException ex) {
-            userRepository.findByEmail(request.email()).ifPresent(user -> {
+            // Only increment failed attempts if user exists (prevent user enumeration)
+            if (user != null) {
                 int attempts = user.getFailedLoginAttempts() + 1;
                 user.setFailedLoginAttempts(attempts);
                 if (attempts >= lockoutThreshold) {
                     user.setLockedUntil(LocalDateTime.now(clock).plusMinutes(lockoutDurationMinutes));
                 }
                 userRepository.save(user);
-            });
+            }
             throw ex;
         }
 
-        User user = userRepository.findByEmail(request.email())
+        // At this point authentication succeeded, so user must exist
+        if (user == null) {
+            // This should never happen, but handle gracefully
+            user = userRepository.findByEmail(request.email())
                 .orElseThrow(() -> new IllegalStateException("User not found after successful authentication"));
+        }
 
+        // Reset failed attempts on successful login
         user.setFailedLoginAttempts(0);
         user.setLockedUntil(null);
         userRepository.save(user);
 
         String accessToken = jwtUtil.generateAccessToken(user.getId(), user.getEmail());
         String refreshToken = UUID.randomUUID().toString();
-        redisTemplate.opsForValue().set(
-                "refresh:" + refreshToken,
-                user.getId(),
-                Duration.ofSeconds(refreshTokenExpirySeconds)
-        );
+        
+        try {
+            redisTemplate.opsForValue().set(
+                    "refresh:" + refreshToken,
+                    user.getId(),
+                    Duration.ofSeconds(refreshTokenExpirySeconds)
+            );
+        } catch (Exception ex) {
+            // Handle Redis connectivity issues during login
+            throw new RuntimeException("Authentication service temporarily unavailable. Please try again later.");
+        }
 
         return new AuthResponse(accessToken, refreshToken, jwtUtil.getAccessTokenExpirySeconds());
     }
 
     public AuthResponse refreshToken(RefreshRequest request) {
         String redisKey = "refresh:" + request.refreshToken();
-        String userId = redisTemplate.opsForValue().get(redisKey);
+        String userId;
+        
+        try {
+            userId = redisTemplate.opsForValue().get(redisKey);
+        } catch (Exception ex) {
+            // Handle Redis connectivity issues gracefully
+            throw new InvalidTokenException("Token service temporarily unavailable. Please try again later.");
+        }
+        
         if (userId == null) {
             throw new InvalidTokenException("Invalid or expired refresh token.");
         }
 
-        redisTemplate.delete(redisKey);
+        try {
+            redisTemplate.delete(redisKey);
+        } catch (Exception ex) {
+            // Log but don't fail - token rotation security is more important than cleanup
+            // In production, consider using a circuit breaker pattern here
+        }
 
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new InvalidTokenException("Invalid or expired refresh token."));
 
         String newAccessToken = jwtUtil.generateAccessToken(user.getId(), user.getEmail());
         String newRefreshToken = UUID.randomUUID().toString();
-        redisTemplate.opsForValue().set(
-                "refresh:" + newRefreshToken,
-                user.getId(),
-                Duration.ofSeconds(refreshTokenExpirySeconds)
-        );
+        
+        try {
+            redisTemplate.opsForValue().set(
+                    "refresh:" + newRefreshToken,
+                    user.getId(),
+                    Duration.ofSeconds(refreshTokenExpirySeconds)
+            );
+        } catch (Exception ex) {
+            // Handle Redis connectivity issues during token storage
+            throw new InvalidTokenException("Token service temporarily unavailable. Please try again later.");
+        }
 
         return new AuthResponse(newAccessToken, newRefreshToken, jwtUtil.getAccessTokenExpirySeconds());
     }
 
     public void logout(LogoutRequest request) {
-        redisTemplate.delete("refresh:" + request.refreshToken());
+        try {
+            redisTemplate.delete("refresh:" + request.refreshToken());
+        } catch (Exception ex) {
+            // Redis failures during logout should not prevent successful logout response
+            // Token will expire naturally if Redis cleanup fails
+            // In production, consider logging this for monitoring
+        }
     }
 }
