@@ -35,3 +35,8 @@ app:
     from: noreply@spring-project.local
   frontend:
     base-url: http://localhost:4200
+  auth:
+    access-token-expiry: 900
+    refresh-token-expiry: 604800
+    lockout-threshold: 5
+    lockout-duration: 15
