@@ -10,6 +10,10 @@ spring:
     show-sql: true
   flyway:
     enabled: false
+  servlet:
+    multipart:
+      max-file-size: 3MB
+      max-request-size: 3MB
   mail:
     host: localhost
     port: 1025

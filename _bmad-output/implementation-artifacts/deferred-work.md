@@ -12,6 +12,10 @@
 - **TOCTOU race in `verifyEmail`** — Under `READ_COMMITTED` isolation, two concurrent requests with the same token can both pass the expiry check and both return HTTP 200. Requires serializable isolation or optimistic locking (e.g., `@Version` on `EmailVerification`). Low priority for single-server dev; revisit before multi-instance deployment.
 - **`EmailVerification.createdAt` set manually in service** — The `createdAt` field is manually assigned in `UserRegistrationService.register()`. If the entity is ever constructed elsewhere without setting this field, the `NOT NULL` DB constraint will throw with no application-level guard. Consider adding `@PrePersist` or relying on `@Column(insertable = false, updatable = false)` with DB default.
 
+## Deferred from: code review of 1-4-creator-profile-creation-and-management (2026-04-25)
+
+- **Old profile image files not deleted on re-upload** — each `saveProfileImage` call writes a new UUID-named file and updates `profile_image_url` in the DB, but never removes the previous file from `uploads/profile-images/{userId}/`. Leads to unbounded disk growth on accounts that upload images repeatedly. Needs a delete-old-file step before (or after) writing the new one, or a periodic cleanup job.
+
 ## Deferred from: code review of 1-3-user-authentication-with-jwt-token-management (2026-04-25)
 
 - **`handleRuntimeException` uses fragile string matching for ServiceUnavailable** — `GlobalExceptionHandler` detects Redis errors by checking if `ex.getMessage()` contains "service temporarily unavailable". A dedicated `ServiceUnavailableException` class would be type-safe and more maintainable.
