@@ -1,6 +1,6 @@
 # Story 1.3: User Authentication with JWT Token Management
 
-Status: review
+Status: done
 
 ## Story
 
@@ -277,6 +277,16 @@ Redis config is implicit for dev (Lettuce default: `localhost:6379`). No `applic
 ### Redis Availability Risk
 
 If Redis is unavailable, refresh token operations will throw `RedisConnectionFailureException`. `AuthService` should let this propagate naturally — it will be caught by `GlobalExceptionHandler`'s generic `Exception` handler and return HTTP 500. This is acceptable behavior (access tokens still work for 15 min). Do NOT add silent fallback.
+
+### Review Findings
+
+- [x] [Review][Patch] @Transactional rollback undoes failedLoginAttempts — account lockout never persists in production [AuthService.java]
+- [x] [Review][Patch] DisabledException wrapped in InternalAuthenticationServiceException by DaoAuthenticationProvider — PENDING user login returns 500 instead of 403 [AuthService.java]
+- [x] [Review][Patch] TestRedisConfig.get() always returns null — loginWorkflow, logoutWorkflow, refreshTokenWorkflow integration tests fail [TestRedisConfig.java]
+- [ ] [Review][Patch] Lockout-crossing attempt returns wrong message — BadCredentialsException re-thrown instead of LockedException when threshold is reached (AC4 violation) [AuthService.java]
+- [ ] [Review][Patch] JwtAuthenticationFilter catches only JwtException — AuthenticationException from loadUserById propagates uncaught → 500 if user status changes after JWT issuance [JwtAuthenticationFilter.java]
+- [x] [Review][Defer] handleRuntimeException uses fragile string matching to detect ServiceUnavailable — should use a dedicated exception class [GlobalExceptionHandler.java] — deferred, pre-existing
+- [x] [Review][Defer] Token rotation not atomic — silent Redis delete failure leaves both old and new tokens valid [AuthService.java] — deferred, pre-existing
 
 ### SecurityConfig Changes — Exact Pattern
 

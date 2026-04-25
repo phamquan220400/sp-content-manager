@@ -89,15 +89,14 @@ class AuthServiceTest {
         pendingUser.setId("pending-id");
         pendingUser.setEmail("user@example.com");
         pendingUser.setStatus(User.UserStatus.PENDING);
-        // AuthenticationManager will throw DisabledException — simulate by throwing from authManager
+        // PENDING check now happens before authenticationManager.authenticate()
         when(userRepository.findByEmail("user@example.com")).thenReturn(Optional.of(pendingUser));
-        when(authenticationManager.authenticate(any()))
-                .thenThrow(new org.springframework.security.authentication.DisabledException(
-                        "Please verify your email address before logging in."));
 
         assertThatThrownBy(() -> authService.login(new LoginRequest("user@example.com", "password")))
                 .isInstanceOf(org.springframework.security.authentication.DisabledException.class)
                 .hasMessageContaining("verify your email");
+
+        verify(authenticationManager, never()).authenticate(any());
     }
 
     @Test

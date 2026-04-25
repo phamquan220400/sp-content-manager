@@ -12,6 +12,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.authentication.DisabledException;
 import org.springframework.security.authentication.LockedException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.stereotype.Service;
@@ -54,7 +55,7 @@ public class AuthService {
         this.lockoutDurationMinutes = lockoutDurationMinutes;
     }
 
-    @Transactional
+    @Transactional(noRollbackFor = {BadCredentialsException.class, LockedException.class})
     public AuthResponse login(LoginRequest request) {
         // Single user lookup to prevent race conditions and improve performance
         User user = userRepository.findByEmail(request.email()).orElse(null);
@@ -62,6 +63,13 @@ public class AuthService {
         // Pre-check lockout if user exists
         if (user != null && user.getLockedUntil() != null && user.getLockedUntil().isAfter(LocalDateTime.now(clock))) {
             throw new LockedException("Account temporarily locked. Please try again later.");
+        }
+
+        // Pre-check PENDING status — DaoAuthenticationProvider wraps DisabledException in
+        // InternalAuthenticationServiceException, which bypasses GlobalExceptionHandler.
+        // Checking here ensures the correct 403 response.
+        if (user != null && user.getStatus() == User.UserStatus.PENDING) {
+            throw new DisabledException("Please verify your email address before logging in.");
         }
 
         try {

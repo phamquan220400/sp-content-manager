@@ -11,3 +11,8 @@
 
 - **TOCTOU race in `verifyEmail`** — Under `READ_COMMITTED` isolation, two concurrent requests with the same token can both pass the expiry check and both return HTTP 200. Requires serializable isolation or optimistic locking (e.g., `@Version` on `EmailVerification`). Low priority for single-server dev; revisit before multi-instance deployment.
 - **`EmailVerification.createdAt` set manually in service** — The `createdAt` field is manually assigned in `UserRegistrationService.register()`. If the entity is ever constructed elsewhere without setting this field, the `NOT NULL` DB constraint will throw with no application-level guard. Consider adding `@PrePersist` or relying on `@Column(insertable = false, updatable = false)` with DB default.
+
+## Deferred from: code review of 1-3-user-authentication-with-jwt-token-management (2026-04-25)
+
+- **`handleRuntimeException` uses fragile string matching for ServiceUnavailable** — `GlobalExceptionHandler` detects Redis errors by checking if `ex.getMessage()` contains "service temporarily unavailable". A dedicated `ServiceUnavailableException` class would be type-safe and more maintainable.
+- **Token rotation not atomic** — In `AuthService.refreshToken()`, if `redisTemplate.delete(oldKey)` fails silently (exception swallowed), both the old and new refresh tokens remain valid simultaneously, undermining token rotation security. Requires a distributed transaction, Lua script, or circuit breaker pattern to make this operation atomic.
