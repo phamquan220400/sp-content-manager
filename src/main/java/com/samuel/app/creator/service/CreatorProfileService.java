@@ -3,6 +3,7 @@ package com.samuel.app.creator.service;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.samuel.app.config.CacheConfig;
 import com.samuel.app.creator.dto.CreateProfileRequest;
 import com.samuel.app.creator.dto.CreatorProfileResponse;
 import com.samuel.app.creator.dto.ProfileImageResponse;
@@ -11,6 +12,7 @@ import com.samuel.app.creator.model.CreatorProfile;
 import com.samuel.app.creator.repository.CreatorProfileRepository;
 import com.samuel.app.exceptions.ProfileAlreadyExistsException;
 import com.samuel.app.exceptions.ResourceNotFoundException;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -70,6 +72,7 @@ public class CreatorProfileService {
     }
     
     @Transactional
+    @CacheEvict(value = CacheConfig.DASHBOARD_CACHE, key = "#userId")
     public CreatorProfileResponse updateProfile(String userId, UpdateProfileRequest request) {
         CreatorProfile profile = creatorProfileRepository.findByUserId(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("Creator profile not found."));
