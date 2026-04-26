@@ -35,7 +35,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-04-21
-last_updated: 2026-04-25T12:00:00
+last_updated: 2026-04-26T00:00:00
 project: spring_project
 project_key: NOKEY
 tracking_system: file-system
@@ -48,13 +48,13 @@ development_status:
   # Goal: Creators can register, authenticate, and set up their basic
   #       creator workspace with complete profile management.
   # ─────────────────────────────────────────────────────────────────
-  epic-1: in-progress
+  epic-1: done
 
   1-1-jangular-cli-project-setup-and-database-configuration: done
   1-2-user-registration-with-email-verification: done
   1-3-user-authentication-with-jwt-token-management: done
   1-4-creator-profile-creation-and-management: done
-  1-5-basic-creator-workspace-dashboard: ready-for-dev
+  1-5-basic-creator-workspace-dashboard: done
 
   epic-1-retrospective: optional
 
