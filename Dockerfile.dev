@@ -1,7 +1,7 @@
 FROM openjdk:17-jdk AS build
 WORKDIR /app
 
-# Install Maven
+# Install Maven (curl already available in base image)
 RUN curl -fsSL https://repo1.maven.org/maven2/org/apache/maven/apache-maven/3.9.6/apache-maven-3.9.6-bin.tar.gz | tar xzf - -C /opt/ \
     && ln -s /opt/apache-maven-3.9.6 /opt/maven \
     && ln -s /opt/maven/bin/mvn /usr/local/bin

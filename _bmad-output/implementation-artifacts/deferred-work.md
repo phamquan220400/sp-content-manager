@@ -20,3 +20,10 @@
 
 - **`handleRuntimeException` uses fragile string matching for ServiceUnavailable** — `GlobalExceptionHandler` detects Redis errors by checking if `ex.getMessage()` contains "service temporarily unavailable". A dedicated `ServiceUnavailableException` class would be type-safe and more maintainable.
 - **Token rotation not atomic** — In `AuthService.refreshToken()`, if `redisTemplate.delete(oldKey)` fails silently (exception swallowed), both the old and new refresh tokens remain valid simultaneously, undermining token rotation security. Requires a distributed transaction, Lua script, or circuit breaker pattern to make this operation atomic.
+
+## Deferred from: code review of 1-5-basic-creator-workspace-dashboard (2026-04-25)
+
+- **Timezone handling inconsistency** [DashboardService.java:38,79] — Mixes `Instant.now()` with `LocalDateTime.now(ZoneOffset.UTC)`. Pre-existing pattern across the codebase; needs unified temporal handling strategy.
+- **Hardcoded cache config needs tuning strategy** [CacheConfig.java:20-22] — 5-minute TTL and 1,000 max entries are arbitrary. Infrastructure concern requiring production metrics, monitoring, and eviction logging.
+- **Performance test for 2-second SLA** [AC1] — No automated verification of load time requirement. Infrastructure/QA concern requiring load testing framework.
+- **Race condition on concurrent profile updates** [CreatorProfileService.java:74-103] — No optimistic locking or versioning; last-write-wins pattern. Pre-existing concurrency issue affecting all profile mutations.

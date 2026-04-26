@@ -226,3 +226,30 @@ Claude Sonnet 4.6 (GitHub Copilot)
 **Modified files:**
 - `pom.xml` — added `spring-boot-starter-cache` + `caffeine` dependencies
 - `src/main/java/com/samuel/app/creator/service/CreatorProfileService.java` — added `@CacheEvict` on `updateProfile()`
+
+### Review Findings
+
+**Code Review Date:** 2026-04-25
+**Review Layers:** Blind Hunter, Edge Case Hunter, Acceptance Auditor
+
+#### Decision Needed
+
+- [ ] [Review][Decision] **AC8 compliance — Unauthenticated access test coverage** — The spec requires verification that unauthenticated access returns 401, but `@AutoConfigureMockMvc(addFilters = false)` in tests bypasses security. Should we add integration tests with real security filters, or mark this as validated by the security config?
+
+#### Patches Required
+
+- [ ] [Review][Patch] **Cache eviction missing on profile image upload** [CreatorProfileService.java:saveProfileImage] — `saveProfileImage()` modifies profile but lacks `@CacheEvict`, causing stale dashboard data
+- [ ] [Review][Patch] **Cache eviction transaction ordering risk** [CreatorProfileService.java:74-75] — `@CacheEvict` + `@Transactional` ordering allows cache clearing even if transaction rolls back
+- [ ] [Review][Patch] **Profile completion status logic incorrect for image-only case** [DashboardService.java:92-99] — Profile with image but no bio/category incorrectly returns "INCOMPLETE"
+- [ ] [Review][Patch] **7-day new user boundary off-by-one** [DashboardService.java:79] — User at exactly 7 days is not "new" due to `< 7` check; spec may intend `<= 7`
+- [ ] [Review][Patch] **Null username defensive check missing** [DashboardController.java:29] — No null check on `userDetails.getUsername()` before use
+- [ ] [Review][Patch] **Cache stampede vulnerability under load** [DashboardService.java:33] — No synchronization; cache expiry under load causes multiple concurrent DB queries
+- [ ] [Review][Patch] **Static navigation menu wastefully cached per user** [DashboardService.java:102-141] — Identical static data duplicated in cache for each user instead of shared singleton
+- [ ] [Review][Patch] **Logout flow and post-logout 401 not tested** [DashboardControllerTest.java] — No test verifies AC7: logout invalidates tokens and blocks dashboard access
+
+#### Deferred (Pre-existing Issues)
+
+- [x] [Review][Defer] **Timezone handling inconsistency** [DashboardService.java:38,79] — deferred, pre-existing pattern
+- [x] [Review][Defer] **Hardcoded cache config needs tuning strategy** [CacheConfig.java:20-22] — deferred, infrastructure concern
+- [x] [Review][Defer] **Performance test for 2-second SLA** [AC1] — deferred, infra/QA concern
+- [x] [Review][Defer] **Race condition on concurrent profile updates** [CreatorProfileService.java:74-103] — deferred, pre-existing concurrency pattern
