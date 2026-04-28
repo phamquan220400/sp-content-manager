@@ -1,4 +1,4 @@
-FROM openjdk:17-jdk AS build
+FROM eclipse-temurin:17-jdk-jammy AS build
 WORKDIR /app
 
 # Install Maven with specific version
@@ -14,7 +14,7 @@ RUN mvn dependency:go-offline
 COPY src ./src
 RUN mvn clean package
 
-FROM openjdk:17-jdk-slim
+FROM eclipse-temurin:17-jre-jammy
 WORKDIR /app
 
 # Install curl for healthcheck

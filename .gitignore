@@ -31,6 +31,11 @@ build/
 
 ### VS Code ###
 .vscode/
+.env
 **/_bmad
 **/skills
 **/uploads
+
+### Application Runtime ###
+tmp/
+.redis/

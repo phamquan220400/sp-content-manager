@@ -32,7 +32,7 @@ public class AuthController {
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(new ApiResponse<>(true, null,
                         "Registration successful. Please check your email to verify your account.",
-                        java.time.LocalDateTime.now()));
+                        null, java.time.LocalDateTime.now()));
     }
 
     @GetMapping("/verify")
@@ -40,7 +40,7 @@ public class AuthController {
         userRegistrationService.verifyEmail(token);
         return ResponseEntity.ok(new ApiResponse<>(true, null,
                 "Email verified successfully. You can now log in.",
-                java.time.LocalDateTime.now()));
+                null, java.time.LocalDateTime.now()));
     }
 
     @PostMapping("/login")
@@ -58,6 +58,6 @@ public class AuthController {
     @PostMapping("/logout")
     public ResponseEntity<ApiResponse<Void>> logout(@Valid @RequestBody LogoutRequest request) {
         authService.logout(request);
-        return ResponseEntity.ok(new ApiResponse<>(true, null, "Logged out successfully.", java.time.LocalDateTime.now()));
+        return ResponseEntity.ok(new ApiResponse<>(true, null, "Logged out successfully.", null, java.time.LocalDateTime.now()));
     }
 }

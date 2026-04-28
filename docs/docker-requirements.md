@@ -79,18 +79,25 @@ Create a `.env` file in the project root:
 # Database Configuration
 DB_URL=jdbc:mysql://mysql:3306/spring_project
 DB_USERNAME=root
-DB_PASSWORD=secure_password_here
+DB_PASSWORD=change_me_for_local_dev
+
+# Redis Configuration
+REDIS_HOST=redis
+REDIS_PORT=6379
+
+# Mail Configuration
+MAIL_HOST=mailhog
+MAIL_PORT=1025
+MAIL_FROM=noreply@spring-project.local
+
+# Frontend Configuration
+FRONTEND_BASE_URL=http://localhost:4200
 
 # JWT Configuration
-JWT_SECRET=your-256-bit-secret-key-here-change-in-production
-
-# Optional: Override default ports
-# MYSQL_PORT=3306
-# REDIS_PORT=6379
-# APP_PORT=8080
+JWT_SECRET=replace-with-a-long-random-dev-secret
 ```
 
-**Security Note:** Never commit `.env` file to version control. Use `.env.example` as a template.
+**Security Note:** Never commit `.env` file to version control. Copy from `.env.example` and adjust any local values you need.
 
 ### 3. Start Services
 
