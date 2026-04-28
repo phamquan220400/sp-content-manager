@@ -1,5 +1,6 @@
 package com.samuel.app.config;
 
+import io.github.resilience4j.circuitbreaker.CircuitBreaker;
 import io.github.resilience4j.circuitbreaker.CircuitBreakerRegistry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -24,13 +25,20 @@ public class Resilience4jConfig {
 
     @PostConstruct
     public void registerEventListeners() {
-        circuitBreakerRegistry.getAllCircuitBreakers().forEach(cb ->
-            cb.getEventPublisher().onStateTransition(event ->
-                log.info("CircuitBreaker '{}' state transition: {} → {}",
-                    event.getCircuitBreakerName(),
-                    event.getStateTransition().getFromState(),
-                    event.getStateTransition().getToState()
-                )
+        // Register on any circuit breakers already in the registry at startup
+        circuitBreakerRegistry.getAllCircuitBreakers().forEach(this::registerStateTransitionListener);
+
+        // Circuit breakers are created lazily on first use — register on future additions too
+        circuitBreakerRegistry.getEventPublisher()
+            .onEntryAdded(event -> registerStateTransitionListener(event.getAddedEntry()));
+    }
+
+    private void registerStateTransitionListener(CircuitBreaker cb) {
+        cb.getEventPublisher().onStateTransition(event ->
+            log.info("CircuitBreaker '{}' state transition: {} → {}",
+                event.getCircuitBreakerName(),
+                event.getStateTransition().getFromState(),
+                event.getStateTransition().getToState()
             )
         );
     }

@@ -2,6 +2,7 @@ package com.samuel.app.config;
 
 import io.github.resilience4j.circuitbreaker.CircuitBreaker;
 import io.github.resilience4j.circuitbreaker.CircuitBreakerRegistry;
+import io.github.resilience4j.core.Registry;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -18,6 +19,9 @@ class Resilience4jConfigTest {
 
     @Mock
     private CircuitBreakerRegistry circuitBreakerRegistry;
+
+    @Mock
+    private Registry.EventPublisher<CircuitBreaker> registryEventPublisher;
 
     @Mock
     private CircuitBreaker youtubeCircuitBreaker;
@@ -39,7 +43,6 @@ class Resilience4jConfigTest {
 
         // Then
         assertNotNull(config);
-        // Config should be created without exceptions
     }
 
     @Test
@@ -47,9 +50,8 @@ class Resilience4jConfigTest {
         // Given
         when(youtubeCircuitBreaker.getEventPublisher()).thenReturn(mock(CircuitBreaker.EventPublisher.class));
         when(tiktokCircuitBreaker.getEventPublisher()).thenReturn(mock(CircuitBreaker.EventPublisher.class));
-        
-        Set<CircuitBreaker> circuitBreakers = Set.of(youtubeCircuitBreaker, tiktokCircuitBreaker);
-        when(circuitBreakerRegistry.getAllCircuitBreakers()).thenReturn(circuitBreakers);
+        when(circuitBreakerRegistry.getAllCircuitBreakers()).thenReturn(Set.of(youtubeCircuitBreaker, tiktokCircuitBreaker));
+        when(circuitBreakerRegistry.getEventPublisher()).thenReturn(registryEventPublisher);
 
         // When
         resilience4jConfig.registerEventListeners();
@@ -58,36 +60,49 @@ class Resilience4jConfigTest {
         verify(circuitBreakerRegistry).getAllCircuitBreakers();
         verify(youtubeCircuitBreaker).getEventPublisher();
         verify(tiktokCircuitBreaker).getEventPublisher();
+        verify(circuitBreakerRegistry).getEventPublisher();
+        verify(registryEventPublisher).onEntryAdded(any());
+    }
+
+    @Test
+    void should_registerOnEntryAdded_when_noCircuitBreakersExistAtStartup_then_futureCircuitBreakersAreCovered() {
+        // Given - empty registry at startup (CBs are created lazily in Resilience4j)
+        when(circuitBreakerRegistry.getAllCircuitBreakers()).thenReturn(Set.of());
+        when(circuitBreakerRegistry.getEventPublisher()).thenReturn(registryEventPublisher);
+
+        // When
+        resilience4jConfig.registerEventListeners();
+
+        // Then - onEntryAdded must be registered so lazily-created CBs get listeners
+        verify(registryEventPublisher).onEntryAdded(any());
     }
 
     @Test
     void should_handleEmptyRegistry_when_noCircuitBreakersExist_then_noExceptionThrown() {
         // Given
         when(circuitBreakerRegistry.getAllCircuitBreakers()).thenReturn(Set.of());
+        when(circuitBreakerRegistry.getEventPublisher()).thenReturn(registryEventPublisher);
 
-        // When & Then - should not throw exception
+        // When & Then
         assertDoesNotThrow(() -> resilience4jConfig.registerEventListeners());
-        
-        verify(circuitBreakerRegistry).getAllCircuitBreakers();
     }
 
     @Test
     void should_requireCircuitBreakerRegistry_when_constructorCalled_then_registryMustNotBeNull() {
-        // When & Then - constructor with null should be handled gracefully
-        // Note: In real Spring context, this would be handled by dependency injection
+        // When & Then - NPE thrown when null registry is used
         assertThrows(NullPointerException.class, () -> {
             Resilience4jConfig config = new Resilience4jConfig(null);
-            config.registerEventListeners(); // This will fail when accessing null registry
+            config.registerEventListeners();
         });
     }
 
     @Test
     void should_invokeBeanInitialization_when_springContextLoads_then_postConstructMethodCalled() {
-        // Given
+        // Given - use a real registry to verify no exception during initialization
         CircuitBreakerRegistry realRegistry = CircuitBreakerRegistry.ofDefaults();
         Resilience4jConfig config = new Resilience4jConfig(realRegistry);
 
-        // When & Then - should not throw exception during initialization
+        // When & Then
         assertDoesNotThrow(() -> config.registerEventListeners());
     }
 }
