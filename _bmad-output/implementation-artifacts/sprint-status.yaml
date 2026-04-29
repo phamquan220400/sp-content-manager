@@ -35,7 +35,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-04-21
-last_updated: 2026-04-28T00:00:00
+last_updated: 2026-04-29T00:00:00
 project: spring_project
 project_key: NOKEY
 tracking_system: file-system
@@ -65,8 +65,8 @@ development_status:
   # ─────────────────────────────────────────────────────────────────
   epic-2: in-progress
 
-  2-1-platform-adapter-interface-and-circuit-breaker-infrastructure: review
-  2-2-youtube-platform-connection-and-authentication: backlog
+  2-1-platform-adapter-interface-and-circuit-breaker-infrastructure: done
+  2-2-youtube-platform-connection-and-authentication: ready-for-dev
   2-3-tiktok-platform-connection-and-authentication: backlog
   2-4-instagram-platform-connection-and-authentication: backlog
   2-5-facebook-platform-connection-and-authentication: backlog
