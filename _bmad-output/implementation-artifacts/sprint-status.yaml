@@ -35,7 +35,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-04-21
-last_updated: 2026-04-29T09:10:00
+last_updated: 2026-04-29T00:00:00
 project: spring_project
 project_key: NOKEY
 tracking_system: file-system
@@ -67,7 +67,7 @@ development_status:
 
   2-1-platform-adapter-interface-and-circuit-breaker-infrastructure: done
   2-2-youtube-platform-connection-and-authentication: done
-  2-3-tiktok-platform-connection-and-authentication: backlog
+  2-3-tiktok-platform-connection-and-authentication: done
   2-4-instagram-platform-connection-and-authentication: backlog
   2-5-facebook-platform-connection-and-authentication: backlog
   2-6-platform-connection-management-dashboard: backlog
