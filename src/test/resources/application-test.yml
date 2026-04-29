@@ -27,6 +27,14 @@ spring:
 jwt:
   secret: test-secret-key-for-unit-tests-only
 
+platform:
+  token-encryption-key: AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
+
+youtube:
+  client-id: test-client-id
+  client-secret: test-client-secret
+  redirect-uri: http://localhost:8080/api/v1/platforms/youtube/callback
+
 app:
   mail:
     from: noreply@spring-project.local

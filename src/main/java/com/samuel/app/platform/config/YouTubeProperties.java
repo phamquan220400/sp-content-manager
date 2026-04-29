@@ -1,13 +1,11 @@
 package com.samuel.app.platform.config;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
-import org.springframework.context.annotation.Configuration;
 
 /**
  * Configuration properties for YouTube OAuth integration.
  * Maps application.yml youtube.* properties to typed configuration.
  */
-@Configuration
 @ConfigurationProperties(prefix = "youtube")
 public class YouTubeProperties {
     

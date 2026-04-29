@@ -81,9 +81,9 @@ class YouTubeConnectionServiceTest {
     @Test
     void should_generate_authorization_url_when_valid_user_id_then_return_url_with_state() {
         // Given
-        when(youTubeProperties.getClientId()).thenReturn("test-client-id");
-        when(youTubeProperties.getRedirectUri()).thenReturn("http://localhost:8080/platform/youtube/callback");
-        when(redisTemplate.opsForValue()).thenReturn(valueOperations);
+        when(youtubeProperties.getClientId()).thenReturn("test-client-id");
+        when(youtubeProperties.getRedirectUri()).thenReturn("http://localhost:8080/platform/youtube/callback");
+        when(stringRedisTemplate.opsForValue()).thenReturn(valueOperations);
         String userId = "user-123";
         
         // When
@@ -93,7 +93,7 @@ class YouTubeConnectionServiceTest {
         assertNotNull(response);
         assertNotNull(response.authorizationUrl());
         assertTrue(response.authorizationUrl().contains("client_id=test-client-id"));
-        assertTrue(response.authorizationUrl().contains("redirect_uri=" + youTubeProperties.getRedirectUri()));
+        assertTrue(response.authorizationUrl().contains("redirect_uri=" + youtubeProperties.getRedirectUri()));
         assertTrue(response.authorizationUrl().contains("scope="));
         assertTrue(response.authorizationUrl().contains("state="));
         
@@ -129,6 +129,7 @@ class YouTubeConnectionServiceTest {
         savedConnection.setFollowerCount(1000000L);
         
         // Mock Redis state validation
+        when(stringRedisTemplate.opsForValue()).thenReturn(valueOperations);
         when(valueOperations.get("oauth:yt:state:" + state)).thenReturn(userId);
         when(creatorProfileRepository.findByUserId(userId)).thenReturn(Optional.of(creatorProfile));
         when(restTemplate.postForObject(anyString(), any(), eq(YouTubeTokenResponse.class)))
@@ -165,6 +166,7 @@ class YouTubeConnectionServiceTest {
         String code = "auth-code-123";
         String invalidState = "invalid-state";
         
+        when(stringRedisTemplate.opsForValue()).thenReturn(valueOperations);
         when(valueOperations.get("oauth:yt:state:" + invalidState)).thenReturn(null);
         
         // When & Then
@@ -182,6 +184,7 @@ class YouTubeConnectionServiceTest {
         String code = "auth-code-123";
         String expiredState = "expired-state";
         
+        when(stringRedisTemplate.opsForValue()).thenReturn(valueOperations);
         when(valueOperations.get("oauth:yt:state:" + expiredState)).thenReturn(null); // Redis returns null for expired
         
         // When & Then

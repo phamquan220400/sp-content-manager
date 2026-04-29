@@ -1,12 +1,15 @@
 package com.samuel.app.integration;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.samuel.app.config.TestMailConfig;
+import com.samuel.app.config.TestRedisConfig;
 import com.samuel.app.creator.dto.LoginRequest;
 import com.samuel.app.creator.dto.RegistrationRequest;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
@@ -21,6 +24,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @SpringBootTest
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
+@Import({TestRedisConfig.class, TestMailConfig.class})
 class AuthenticationApiContractTest {
 
     @Autowired

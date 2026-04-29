@@ -8,6 +8,8 @@ import com.samuel.app.platform.adapter.PlatformType;
 import com.samuel.app.platform.dto.PlatformConnectionResponse;
 import com.samuel.app.platform.dto.YouTubeAuthUrlResponse;
 import com.samuel.app.platform.service.YouTubeConnectionService;
+import com.samuel.app.shared.controller.GlobalExceptionHandler;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -55,15 +57,22 @@ class PlatformConnectionControllerTest {
     
     @BeforeEach
     void setUp() {
-        mockMvc = MockMvcBuilders.standaloneSetup(platformConnectionController).build();
+        mockMvc = MockMvcBuilders.standaloneSetup(platformConnectionController)
+                .setControllerAdvice(new GlobalExceptionHandler())
+                .build();
         objectMapper = new ObjectMapper();
+        SecurityContextHolder.setContext(securityContext);
+        lenient().when(securityContext.getAuthentication()).thenReturn(authentication);
+    }
+
+    @AfterEach
+    void tearDown() {
+        SecurityContextHolder.clearContext();
     }
     
     @Test
     void should_return_auth_url_when_authenticated_user_requests_youtube_auth() throws Exception {
         // Given
-        SecurityContextHolder.setContext(securityContext);
-        when(securityContext.getAuthentication()).thenReturn(authentication);
         String userId = "user-123";
         YouTubeAuthUrlResponse expectedResponse = new YouTubeAuthUrlResponse(
                 "https://accounts.google.com/o/oauth2/v2/auth?client_id=test&state=abc123"
