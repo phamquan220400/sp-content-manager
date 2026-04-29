@@ -9,16 +9,19 @@ import com.samuel.app.platform.dto.YouTubeAuthUrlResponse;
 import com.samuel.app.platform.service.TikTokConnectionService;
 import com.samuel.app.platform.service.YouTubeConnectionService;
 import com.samuel.app.shared.controller.ApiResponse;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
+
+import java.time.LocalDateTime;
 
 /**
  * REST controller for platform connection management.
  * Handles YouTube and TikTok OAuth flows and connection status operations.
  */
 @RestController
-@RequestMapping("/api/v1/platforms")
+@RequestMapping("/platforms")
 public class PlatformConnectionController {
 
     private final YouTubeConnectionService youTubeConnectionService;
@@ -50,14 +53,25 @@ public class PlatformConnectionController {
      * Handles OAuth callback from Google authorization.
      * This endpoint is NOT authenticated (permitAll in SecurityConfig).
      *
-     * @param code  authorization code from Google
-     * @param state CSRF state token
+     * @param code             authorization code from Google (absent on error callback)
+     * @param state            CSRF state token (absent on error callback)
+     * @param error            OAuth error code from Google (present on error callback)
+     * @param errorDescription human-readable error detail from Google
      * @return platform connection response with connection details
      */
     @GetMapping("/youtube/callback")
     public ResponseEntity<ApiResponse<PlatformConnectionResponse>> handleYouTubeCallback(
-            @RequestParam String code,
-            @RequestParam String state) {
+            @RequestParam(required = false) String code,
+            @RequestParam(required = false) String state,
+            @RequestParam(required = false) String error,
+            @RequestParam(name = "error_description", required = false) String errorDescription) {
+        if (error != null || code == null || state == null) {
+            String raw = errorDescription != null ? errorDescription : (error != null ? error : "Missing OAuth parameters");
+            String message = raw.replaceAll("[\\r\\n\\t]", " ").strip();
+            if (message.length() > 200) message = message.substring(0, 200);
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(new ApiResponse<>(false, null, message, null, LocalDateTime.now()));
+        }
         PlatformConnectionResponse response = youTubeConnectionService.handleCallback(code, state);
         return ResponseEntity.ok(ApiResponse.ok(response));
     }
@@ -102,14 +116,25 @@ public class PlatformConnectionController {
      * Handles OAuth callback from TikTok authorization.
      * This endpoint is NOT authenticated (permitAll in SecurityConfig).
      *
-     * @param code  authorization code from TikTok
-     * @param state CSRF state token
+     * @param code             authorization code from TikTok (absent on error callback)
+     * @param state            CSRF state token (absent on error callback)
+     * @param error            OAuth error code from TikTok (present on error callback)
+     * @param errorDescription human-readable error detail from TikTok
      * @return platform connection response with connection details
      */
     @GetMapping("/tiktok/callback")
     public ResponseEntity<ApiResponse<PlatformConnectionResponse>> handleTikTokCallback(
-            @RequestParam String code,
-            @RequestParam String state) {
+            @RequestParam(required = false) String code,
+            @RequestParam(required = false) String state,
+            @RequestParam(required = false) String error,
+            @RequestParam(name = "error_description", required = false) String errorDescription) {
+        if (error != null || code == null || state == null) {
+            String raw = errorDescription != null ? errorDescription : (error != null ? error : "Missing OAuth parameters");
+            String message = raw.replaceAll("[\\r\\n\\t]", " ").strip();
+            if (message.length() > 200) message = message.substring(0, 200);
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(new ApiResponse<>(false, null, message, null, LocalDateTime.now()));
+        }
         PlatformConnectionResponse response = tikTokConnectionService.handleCallback(code, state);
         return ResponseEntity.ok(ApiResponse.ok(response));
     }

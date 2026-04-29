@@ -89,7 +89,7 @@ public class TikTokConnectionService {
                 .queryParam("client_key", tikTokProperties.getClientKey())
                 .queryParam("redirect_uri", tikTokProperties.getRedirectUri())
                 .queryParam("response_type", "code")
-                .queryParam("scope", "user.info.basic,user.info.profile,user.info.stats")
+                .queryParam("scope", "user.info.profile,user.info.stats")
                 .queryParam("state", state)
                 .build()
                 .toUriString();

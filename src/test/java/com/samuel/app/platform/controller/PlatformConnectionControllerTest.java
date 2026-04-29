@@ -82,7 +82,7 @@ class PlatformConnectionControllerTest {
         when(youTubeConnectionService.getAuthorizationUrl(userId)).thenReturn(expectedResponse);
         
         // When & Then
-        mockMvc.perform(get("/api/v1/platforms/youtube/auth/url"))
+        mockMvc.perform(get("/platforms/youtube/auth/url"))
                 .andExpect(status().isOk())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
                 .andExpect(jsonPath("$.success").value(true))
@@ -109,7 +109,7 @@ class PlatformConnectionControllerTest {
         when(youTubeConnectionService.handleCallback(code, state)).thenReturn(expectedResponse);
         
         // When & Then
-        mockMvc.perform(get("/api/v1/platforms/youtube/callback")
+        mockMvc.perform(get("/platforms/youtube/callback")
                         .param("code", code)
                         .param("state", state))
                 .andExpect(status().isOk())
@@ -145,7 +145,7 @@ class PlatformConnectionControllerTest {
         when(youTubeConnectionService.getConnectionStatus(creatorProfileId)).thenReturn(expectedResponse);
         
         // When & Then
-        mockMvc.perform(get("/api/v1/platforms/youtube/connection"))
+        mockMvc.perform(get("/platforms/youtube/connection"))
                 .andExpect(status().isOk())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
                 .andExpect(jsonPath("$.success").value(true))
@@ -180,7 +180,7 @@ class PlatformConnectionControllerTest {
         when(youTubeConnectionService.disconnectYouTube(creatorProfileId)).thenReturn(expectedResponse);
         
         // When & Then
-        mockMvc.perform(delete("/api/v1/platforms/youtube/disconnect"))
+        mockMvc.perform(delete("/platforms/youtube/disconnect"))
                 .andExpect(status().isOk())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
                 .andExpect(jsonPath("$.success").value(true))
@@ -192,7 +192,7 @@ class PlatformConnectionControllerTest {
     @Test
     void should_handle_missing_code_parameter_in_callback() throws Exception {
         // When & Then
-        mockMvc.perform(get("/api/v1/platforms/youtube/callback")
+        mockMvc.perform(get("/platforms/youtube/callback")
                         .param("state", "test-state"))
                 .andExpect(status().isBadRequest());
         
@@ -203,7 +203,7 @@ class PlatformConnectionControllerTest {
     @Test
     void should_handle_missing_state_parameter_in_callback() throws Exception {
         // When & Then
-        mockMvc.perform(get("/api/v1/platforms/youtube/callback")
+        mockMvc.perform(get("/platforms/youtube/callback")
                         .param("code", "test-code"))
                 .andExpect(status().isBadRequest());
         
@@ -226,7 +226,7 @@ class PlatformConnectionControllerTest {
                 .thenThrow(new RuntimeException("Service error"));
         
         // When & Then
-        mockMvc.perform(get("/api/v1/platforms/youtube/connection"))
+        mockMvc.perform(get("/platforms/youtube/connection"))
                 .andExpect(status().isInternalServerError());
         
         verify(youTubeConnectionService).getConnectionStatus(creatorProfileId);

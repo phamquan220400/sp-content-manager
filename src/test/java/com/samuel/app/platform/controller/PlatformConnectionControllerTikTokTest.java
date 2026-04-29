@@ -89,7 +89,7 @@ class PlatformConnectionControllerTikTokTest {
         when(tikTokConnectionService.getAuthorizationUrl(userId)).thenReturn(expectedResponse);
 
         // When & Then
-        mockMvc.perform(get("/api/v1/platforms/tiktok/auth/url"))
+        mockMvc.perform(get("/platforms/tiktok/auth/url"))
                 .andExpect(status().isOk())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
                 .andExpect(jsonPath("$.success").value(true))
@@ -122,7 +122,7 @@ class PlatformConnectionControllerTikTokTest {
         when(tikTokConnectionService.getConnectionStatus(creatorProfileId)).thenReturn(expectedResponse);
 
         // When & Then
-        mockMvc.perform(get("/api/v1/platforms/tiktok/connection"))
+        mockMvc.perform(get("/platforms/tiktok/connection"))
                 .andExpect(status().isOk())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
                 .andExpect(jsonPath("$.success").value(true))
@@ -157,12 +157,26 @@ class PlatformConnectionControllerTikTokTest {
         when(tikTokConnectionService.disconnectTikTok(creatorProfileId)).thenReturn(expectedResponse);
 
         // When & Then
-        mockMvc.perform(delete("/api/v1/platforms/tiktok/disconnect"))
+        mockMvc.perform(delete("/platforms/tiktok/disconnect"))
                 .andExpect(status().isOk())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data.status").value(ConnectionStatus.DISCONNECTED.name()));
 
         verify(tikTokConnectionService).disconnectTikTok(creatorProfileId);
+    }
+
+    @Test
+    void should_return_bad_request_when_tiktok_sends_error_callback() throws Exception {
+        // When & Then (TikTok sends ?error=access_denied&error_description=User+denied+authorization)
+        mockMvc.perform(get("/platforms/tiktok/callback")
+                        .param("error", "access_denied")
+                        .param("error_description", "User denied authorization"))
+                .andExpect(status().isBadRequest())
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.message").value("User denied authorization"));
+
+        verifyNoInteractions(tikTokConnectionService);
     }
 }

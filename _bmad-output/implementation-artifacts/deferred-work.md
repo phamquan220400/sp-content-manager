@@ -27,3 +27,10 @@
 - **Hardcoded cache config needs tuning strategy** [CacheConfig.java:20-22] — 5-minute TTL and 1,000 max entries are arbitrary. Infrastructure concern requiring production metrics, monitoring, and eviction logging.
 - **Performance test for 2-second SLA** [AC1] — No automated verification of load time requirement. Infrastructure/QA concern requiring load testing framework.
 - **Race condition on concurrent profile updates** [CreatorProfileService.java:74-103] — No optimistic locking or versioning; last-write-wins pattern. Pre-existing concurrency issue affecting all profile mutations.
+
+## Deferred from: fix-tiktok-callback-400 code review (2026-04-29)
+
+- **No rate limiting on public OAuth callback endpoints** — `platforms/tiktok/callback` and `/platforms/youtube/callback` are now `permitAll()`. An unauthenticated attacker can hammer them to exhaust token-exchange quota or enumerate error messages. Add rate limiting (e.g., `resilience4j` `@RateLimiter` or a `HandlerInterceptor`) before production hardening.
+- **PlatformConnectionException message exposed to unauthenticated callers** — `GlobalExceptionHandler` returns exception messages (including internal service details) in error responses. Now that callbacks are public, these details are reachable without a JWT. Consider scrubbing internal details to a generic message for unauthenticated paths.
+- **Double `/api/v1` prefix in DashboardController and CreatorProfileController** — `@RequestMapping("/api/v1")` and `@RequestMapping("/api/v1/profile")` have the same double-prefix bug fixed in `PlatformConnectionController` here. Their MockMvc tests pass because `standaloneSetup` ignores context-path, but real runtime routing is broken the same way. Fix independently.
+- **Implicit context-path coupling** — All platform endpoints now rely on `server.servlet.context-path=/api/v1` in `application.yml` to produce correct URLs. A change to context-path would silently misalign `SecurityConfig` matchers and controller mappings with no compile-time error. Consider documenting this constraint explicitly.
