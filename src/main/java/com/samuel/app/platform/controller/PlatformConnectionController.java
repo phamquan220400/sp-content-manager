@@ -3,9 +3,11 @@ package com.samuel.app.platform.controller;
 import com.samuel.app.creator.model.CreatorProfile;
 import com.samuel.app.creator.repository.CreatorProfileRepository;
 import com.samuel.app.exceptions.ResourceNotFoundException;
+import com.samuel.app.platform.dto.InstagramAuthUrlResponse;
 import com.samuel.app.platform.dto.PlatformConnectionResponse;
 import com.samuel.app.platform.dto.TikTokAuthUrlResponse;
 import com.samuel.app.platform.dto.YouTubeAuthUrlResponse;
+import com.samuel.app.platform.service.InstagramConnectionService;
 import com.samuel.app.platform.service.TikTokConnectionService;
 import com.samuel.app.platform.service.YouTubeConnectionService;
 import com.samuel.app.shared.controller.ApiResponse;
@@ -18,7 +20,7 @@ import java.time.LocalDateTime;
 
 /**
  * REST controller for platform connection management.
- * Handles YouTube and TikTok OAuth flows and connection status operations.
+ * Handles YouTube, TikTok, and Instagram OAuth flows and connection status operations.
  */
 @RestController
 @RequestMapping("/platforms")
@@ -26,14 +28,17 @@ public class PlatformConnectionController {
 
     private final YouTubeConnectionService youTubeConnectionService;
     private final TikTokConnectionService tikTokConnectionService;
+    private final InstagramConnectionService instagramConnectionService;
     private final CreatorProfileRepository creatorProfileRepository;
 
     public PlatformConnectionController(
             YouTubeConnectionService youTubeConnectionService,
             TikTokConnectionService tikTokConnectionService,
+            InstagramConnectionService instagramConnectionService,
             CreatorProfileRepository creatorProfileRepository) {
         this.youTubeConnectionService = youTubeConnectionService;
         this.tikTokConnectionService = tikTokConnectionService;
+        this.instagramConnectionService = instagramConnectionService;
         this.creatorProfileRepository = creatorProfileRepository;
     }
 
@@ -160,6 +165,58 @@ public class PlatformConnectionController {
     public ResponseEntity<ApiResponse<PlatformConnectionResponse>> disconnectTikTok() {
         String creatorProfileId = getCreatorProfileId();
         PlatformConnectionResponse response = tikTokConnectionService.disconnectTikTok(creatorProfileId);
+        return ResponseEntity.ok(ApiResponse.ok(response));
+    }
+
+    /**
+     * Generates Instagram OAuth authorization URL for authenticated user.
+     *
+     * @return response containing Instagram OAuth authorization URL
+     */
+    @GetMapping("/instagram/auth/url")
+    public ResponseEntity<ApiResponse<InstagramAuthUrlResponse>> getInstagramAuthUrl() {
+        String userId = SecurityContextHolder.getContext().getAuthentication().getName();
+        InstagramAuthUrlResponse response = instagramConnectionService.getAuthorizationUrl(userId);
+        return ResponseEntity.ok(ApiResponse.ok(response));
+    }
+
+    /**
+     * Handles OAuth callback from Instagram authorization.
+     * This endpoint is NOT authenticated (permitAll in SecurityConfig).
+     *
+     * @param code  authorization code from Meta
+     * @param state CSRF state token
+     * @return platform connection response with connection details
+     */
+    @GetMapping("/instagram/callback")
+    public ResponseEntity<ApiResponse<PlatformConnectionResponse>> handleInstagramCallback(
+            @RequestParam String code,
+            @RequestParam String state) {
+        PlatformConnectionResponse response = instagramConnectionService.handleCallback(code, state);
+        return ResponseEntity.ok(ApiResponse.ok(response));
+    }
+
+    /**
+     * Gets Instagram connection status for authenticated user.
+     *
+     * @return platform connection response with status and details
+     */
+    @GetMapping("/instagram/connection")
+    public ResponseEntity<ApiResponse<PlatformConnectionResponse>> getInstagramConnectionStatus() {
+        String creatorProfileId = getCreatorProfileId();
+        PlatformConnectionResponse response = instagramConnectionService.getConnectionStatus(creatorProfileId);
+        return ResponseEntity.ok(ApiResponse.ok(response));
+    }
+
+    /**
+     * Disconnects Instagram account for authenticated user.
+     *
+     * @return updated platform connection response
+     */
+    @DeleteMapping("/instagram/disconnect")
+    public ResponseEntity<ApiResponse<PlatformConnectionResponse>> disconnectInstagram() {
+        String creatorProfileId = getCreatorProfileId();
+        PlatformConnectionResponse response = instagramConnectionService.disconnectInstagram(creatorProfileId);
         return ResponseEntity.ok(ApiResponse.ok(response));
     }
 

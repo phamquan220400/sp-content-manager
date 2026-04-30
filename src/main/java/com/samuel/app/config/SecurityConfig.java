@@ -69,6 +69,8 @@ public class SecurityConfig {
                 .requestMatchers("/auth/**").permitAll()
                 .requestMatchers("/platforms/youtube/callback").permitAll()
                 .requestMatchers("/platforms/tiktok/callback").permitAll()
+                .requestMatchers("/platforms/instagram/callback").permitAll()
+                .requestMatchers("/api/v1/auth/register", "/api/v1/auth/login").permitAll()
                 .requestMatchers("/swagger-ui/**", "/v3/api-docs/**", "/swagger-ui.html").permitAll()
                 .anyRequest().authenticated()
             );
@@ -84,7 +86,7 @@ public class SecurityConfig {
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
         configuration.setAllowedOrigins(Arrays.asList("http://localhost:4200"));
-        configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE"));
+        configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(Arrays.asList("Authorization", "Content-Type", "X-Correlation-ID"));
         configuration.setAllowCredentials(true);
         configuration.setMaxAge(3600L);

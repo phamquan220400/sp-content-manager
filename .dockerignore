@@ -1,0 +1,51 @@
+# Temporary directories causing permission conflicts
+tmp/
+logs/
+target/
+uploads/
+
+# Version control
+.git/
+.gitignore
+
+# Maven
+.mvn/
+mvnw
+mvnw.cmd
+*.iml
+*.ipr
+*.iws
+
+# IDE
+.idea/
+.vscode/
+.settings/
+.project
+.classpath
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Documentation and configs that don't belong in image
+README.md
+docker-compose.yml
+docker-compose.*.yml
+.env
+.env.*
+
+# BMAD framework files
+_bmad/
+_bmad-output/
+.github/
+
+# Node.js (if any frontend tooling)
+node_modules/
+npm-debug.log*
+
+# Other common excludes for Java projects
+*.log
+*.tmp
+*.bak
+*.swp
+*.lock

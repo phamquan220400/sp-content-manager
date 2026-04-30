@@ -126,5 +126,10 @@ tiktok:
   client-secret: ${TIKTOK_CLIENT_SECRET:your-tiktok-client-secret}
   redirect-uri: ${TIKTOK_REDIRECT_URI:http://localhost:8080/api/v1/platforms/tiktok/callback}
 
+instagram:
+  client-id: ${INSTAGRAM_CLIENT_ID:your-instagram-client-id}
+  client-secret: ${INSTAGRAM_CLIENT_SECRET:your-instagram-client-secret}
+  redirect-uri: ${INSTAGRAM_REDIRECT_URI:http://localhost:8080/api/v1/platforms/instagram/callback}
+
 platform:
   token-encryption-key: ${PLATFORM_TOKEN_ENCRYPTION_KEY:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=}

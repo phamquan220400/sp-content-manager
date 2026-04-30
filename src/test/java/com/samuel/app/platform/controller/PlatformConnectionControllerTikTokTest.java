@@ -7,6 +7,7 @@ import com.samuel.app.platform.adapter.ConnectionStatus;
 import com.samuel.app.platform.adapter.PlatformType;
 import com.samuel.app.platform.dto.PlatformConnectionResponse;
 import com.samuel.app.platform.dto.TikTokAuthUrlResponse;
+import com.samuel.app.platform.service.InstagramConnectionService;
 import com.samuel.app.platform.service.TikTokConnectionService;
 import com.samuel.app.platform.service.YouTubeConnectionService;
 import com.samuel.app.shared.controller.GlobalExceptionHandler;
@@ -44,6 +45,9 @@ class PlatformConnectionControllerTikTokTest {
     private TikTokConnectionService tikTokConnectionService;
 
     @Mock
+    private InstagramConnectionService instagramConnectionService;
+
+    @Mock
     private CreatorProfileRepository creatorProfileRepository;
 
     @Mock
@@ -62,6 +66,7 @@ class PlatformConnectionControllerTikTokTest {
         platformConnectionController = new PlatformConnectionController(
                 youTubeConnectionService,
                 tikTokConnectionService,
+                instagramConnectionService,
                 creatorProfileRepository
         );
         mockMvc = MockMvcBuilders.standaloneSetup(platformConnectionController)

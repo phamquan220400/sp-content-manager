@@ -4,9 +4,9 @@ services:
       - .env
     build:
       context: .
-      # dockerfile: Dockerfile # Use Dockerfile for production
-      dockerfile: Dockerfile.dev # Use Dockerfile.dev for development
-    container_name: authentication-app
+      dockerfile: Dockerfile # Use Dockerfile for production
+      # dockerfile: Dockerfile.dev # Use Dockerfile.dev for development
+    container_name: sp-content-management-app
     ports:
       - "8080:8080"
       - "5005:5005"  # Debug port for development
@@ -19,10 +19,9 @@ services:
       - TZ=UTC
     volumes:
       - ./logs:/app/logs
-      - ./tmp:/tmp
       - ./uploads:/app/uploads # persist user-uploaded files
-      - .:/app # only for development
-      - ~/.m2:/root/.m2 # only for development
+      # - .:/app # only for development
+      # - ~/.m2:/root/.m2 # only for development
     deploy:
       resources:
         limits:
@@ -49,7 +48,7 @@ services:
       - app-network
   mysql:
     image: mysql:8.0
-    container_name: creator-platform-mysql
+    container_name: sp-content-management-mysql
     environment:
       - MYSQL_ROOT_PASSWORD=${DB_PASSWORD:-123456}
       - MYSQL_DATABASE=spring_project
@@ -77,7 +76,7 @@ services:
       - app-network
   mailhog:
     image: 'mailhog/mailhog:v1.0.1'
-    container_name: authentication-mail
+    container_name: sp-content-management-mail
     deploy:
       resources:
         limits:
@@ -94,7 +93,7 @@ services:
       - app-network
   redis:
     image: redis:7.2-alpine
-    container_name: authentication-redis
+    container_name: sp-content-management-redis
     ports:
       - "6379:6379"
     deploy:

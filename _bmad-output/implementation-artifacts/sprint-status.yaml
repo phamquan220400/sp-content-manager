@@ -68,9 +68,10 @@ development_status:
   2-1-platform-adapter-interface-and-circuit-breaker-infrastructure: done
   2-2-youtube-platform-connection-and-authentication: done
   2-3-tiktok-platform-connection-and-authentication: done
-  2-4-instagram-platform-connection-and-authentication: backlog
-  2-5-facebook-platform-connection-and-authentication: backlog
-  2-6-platform-connection-management-dashboard: backlog
+  2-4-docker-development-environment-fix: done
+  2-5-instagram-platform-connection-and-authentication: ready-for-dev
+  2-6-facebook-platform-connection-and-authentication: backlog
+  2-7-platform-connection-management-dashboard: backlog
 
   epic-2-retrospective: optional
 
