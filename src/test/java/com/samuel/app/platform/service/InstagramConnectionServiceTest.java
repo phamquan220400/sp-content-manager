@@ -388,4 +388,59 @@ class InstagramConnectionServiceTest {
 
         assertTrue(exception.getMessage().contains("Instagram connection not found"));
     }
+
+    @Test
+    void should_use_60_day_expiry_when_expires_in_is_null() {
+        // Given
+        String code = "auth-code-123";
+        String state = "state-456";
+        String userId = "user-789";
+
+        CreatorProfile creatorProfile = new CreatorProfile();
+        creatorProfile.setId("creator-profile-id");
+
+        // Long-lived token response with null expiresIn (should fallback to 60 days)
+        InstagramTokenResponse shortLivedToken = new InstagramTokenResponse("short-token", "Bearer", null);
+        InstagramTokenResponse longLivedTokenNullExpiry = new InstagramTokenResponse("long-token", "Bearer", null);
+
+        MetaPageResponse.Page page = new MetaPageResponse.Page("page-123", "Test Page", "page-token");
+        MetaPageResponse pagesResponse = new MetaPageResponse(List.of(page));
+        MetaIgAccountResponse.IgAccount igAccount = new MetaIgAccountResponse.IgAccount("ig-user-123");
+        MetaIgAccountResponse igAccountResponse = new MetaIgAccountResponse(igAccount);
+        InstagramUserResponse userResponse = new InstagramUserResponse("ig-user-123", "testuser", 1000L);
+
+        PlatformConnection savedConnection = new PlatformConnection();
+        savedConnection.setPlatformType(PlatformType.INSTAGRAM);
+        savedConnection.setStatus(ConnectionStatus.CONNECTED);
+        savedConnection.setPlatformUserId("ig-user-123");
+        savedConnection.setPlatformName("testuser");
+        savedConnection.setFollowerCount(1000L);
+
+        when(stringRedisTemplate.opsForValue()).thenReturn(valueOperations);
+        when(valueOperations.get("oauth:ig:state:" + state)).thenReturn(userId);
+        when(creatorProfileRepository.findByUserId(userId)).thenReturn(Optional.of(creatorProfile));
+        when(restTemplate.postForObject(anyString(), any(HttpEntity.class), eq(InstagramTokenResponse.class)))
+                .thenReturn(shortLivedToken);
+        when(restTemplate.getForObject(contains("fb_exchange_token"), eq(InstagramTokenResponse.class)))
+                .thenReturn(longLivedTokenNullExpiry);
+        when(restTemplate.getForObject(contains("/me/accounts"), eq(MetaPageResponse.class)))
+                .thenReturn(pagesResponse);
+        when(restTemplate.getForObject(contains("instagram_business_account"), eq(MetaIgAccountResponse.class)))
+                .thenReturn(igAccountResponse);
+        when(restTemplate.getForObject(contains("ig-user-123"), eq(InstagramUserResponse.class)))
+                .thenReturn(userResponse);
+        when(tokenEncryptionService.encrypt("long-token")).thenReturn("encrypted-token");
+        when(platformConnectionRepository.findByCreatorProfileIdAndPlatformType(
+                "creator-profile-id", PlatformType.INSTAGRAM)).thenReturn(Optional.empty());
+        when(platformConnectionRepository.save(any(PlatformConnection.class))).thenReturn(savedConnection);
+
+        // When — must not throw NPE
+        assertDoesNotThrow(() -> instagramConnectionService.handleCallback(code, state));
+
+        // Verify the connection was saved with ~60 day expiry (tokenExpiresAt set to now+60days)
+        verify(platformConnectionRepository).save(argThat(conn ->
+                conn.getTokenExpiresAt() != null &&
+                conn.getTokenExpiresAt().isAfter(java.time.LocalDateTime.now().plusDays(59))
+        ));
+    }
 }

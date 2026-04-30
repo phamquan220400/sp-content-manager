@@ -40,8 +40,7 @@ public class InstagramConnectionService {
     private static final String META_AUTH_URL = "https://www.facebook.com/v18.0/dialog/oauth";
     private static final String META_TOKEN_URL = "https://graph.facebook.com/v18.0/oauth/access_token";
     private static final String META_PAGES_URL = "https://graph.facebook.com/v18.0/me/accounts";
-    private static final String META_PAGE_IG_ACCOUNT_URL_TEMPLATE = "https://graph.facebook.com/v18.0/%s";
-    private static final String META_IG_USER_URL_TEMPLATE = "https://graph.facebook.com/v18.0/%s";
+    private static final String META_GRAPH_URL_TEMPLATE = "https://graph.facebook.com/v18.0/%s";
 
     private final InstagramProperties instagramProperties;
     private final StringRedisTemplate stringRedisTemplate;
@@ -167,7 +166,9 @@ public class InstagramConnectionService {
         connection.setFollowerCount(userResponse.followersCount());
         connection.setAccessTokenEncrypted(encryptedAccessToken);
         connection.setRefreshTokenEncrypted(null); // Meta long-lived tokens don't use refresh tokens
-        connection.setTokenExpiresAt(now.plusSeconds(longLivedTokenResponse.expiresIn()));
+        // expiresIn may be null for some Meta token responses; fall back to 60-day default
+        Long expiresIn = longLivedTokenResponse.expiresIn();
+        connection.setTokenExpiresAt(expiresIn != null ? now.plusSeconds(expiresIn) : now.plusDays(60));
         connection.setLastSyncAt(now);
 
         // Save connection
@@ -240,7 +241,13 @@ public class InstagramConnectionService {
         HttpEntity<MultiValueMap<String, String>> request = new HttpEntity<>(params, headers);
 
         try {
-            return restTemplate.postForObject(META_TOKEN_URL, request, InstagramTokenResponse.class);
+            InstagramTokenResponse response = restTemplate.postForObject(META_TOKEN_URL, request, InstagramTokenResponse.class);
+            if (response == null) {
+                throw new PlatformConnectionException(PlatformType.INSTAGRAM, "Empty response from Meta token endpoint");
+            }
+            return response;
+        } catch (PlatformConnectionException e) {
+            throw e;
         } catch (Exception e) {
             throw new PlatformConnectionException(PlatformType.INSTAGRAM, "Failed to exchange authorization code for short-lived token", e);
         }
@@ -260,7 +267,13 @@ public class InstagramConnectionService {
                 .toUriString();
 
         try {
-            return restTemplate.getForObject(longLivedTokenUrl, InstagramTokenResponse.class);
+            InstagramTokenResponse response = restTemplate.getForObject(longLivedTokenUrl, InstagramTokenResponse.class);
+            if (response == null) {
+                throw new PlatformConnectionException(PlatformType.INSTAGRAM, "Empty response from Meta long-lived token endpoint");
+            }
+            return response;
+        } catch (PlatformConnectionException e) {
+            throw e;
         } catch (Exception e) {
             throw new PlatformConnectionException(PlatformType.INSTAGRAM, "Failed to exchange short-lived token for long-lived token", e);
         }
@@ -277,7 +290,13 @@ public class InstagramConnectionService {
                 .toUriString();
 
         try {
-            return restTemplate.getForObject(pagesUrl, MetaPageResponse.class);
+            MetaPageResponse response = restTemplate.getForObject(pagesUrl, MetaPageResponse.class);
+            if (response == null) {
+                throw new PlatformConnectionException(PlatformType.INSTAGRAM, "Empty response from Meta pages endpoint");
+            }
+            return response;
+        } catch (PlatformConnectionException e) {
+            throw e;
         } catch (Exception e) {
             throw new PlatformConnectionException(PlatformType.INSTAGRAM, "Failed to retrieve Facebook pages", e);
         }
@@ -288,14 +307,20 @@ public class InstagramConnectionService {
      */
     private MetaIgAccountResponse getPageInstagramAccount(String pageId, String accessToken) {
         String pageIgUrl = UriComponentsBuilder
-                .fromHttpUrl(String.format(META_PAGE_IG_ACCOUNT_URL_TEMPLATE, pageId))
+                .fromHttpUrl(String.format(META_GRAPH_URL_TEMPLATE, pageId))
                 .queryParam("fields", "instagram_business_account")
                 .queryParam("access_token", accessToken)
                 .build()
                 .toUriString();
 
         try {
-            return restTemplate.getForObject(pageIgUrl, MetaIgAccountResponse.class);
+            MetaIgAccountResponse response = restTemplate.getForObject(pageIgUrl, MetaIgAccountResponse.class);
+            if (response == null) {
+                throw new PlatformConnectionException(PlatformType.INSTAGRAM, "Empty response from Meta page IG account endpoint");
+            }
+            return response;
+        } catch (PlatformConnectionException e) {
+            throw e;
         } catch (Exception e) {
             throw new PlatformConnectionException(PlatformType.INSTAGRAM, "Failed to retrieve Instagram Business Account", e);
         }
@@ -306,14 +331,20 @@ public class InstagramConnectionService {
      */
     private InstagramUserResponse getInstagramUserInfo(String igUserId, String accessToken) {
         String userInfoUrl = UriComponentsBuilder
-                .fromHttpUrl(String.format(META_IG_USER_URL_TEMPLATE, igUserId))
+                .fromHttpUrl(String.format(META_GRAPH_URL_TEMPLATE, igUserId))
                 .queryParam("fields", "id,username,followers_count")
                 .queryParam("access_token", accessToken)
                 .build()
                 .toUriString();
 
         try {
-            return restTemplate.getForObject(userInfoUrl, InstagramUserResponse.class);
+            InstagramUserResponse response = restTemplate.getForObject(userInfoUrl, InstagramUserResponse.class);
+            if (response == null) {
+                throw new PlatformConnectionException(PlatformType.INSTAGRAM, "Empty response from Meta user info endpoint");
+            }
+            return response;
+        } catch (PlatformConnectionException e) {
+            throw e;
         } catch (Exception e) {
             throw new PlatformConnectionException(PlatformType.INSTAGRAM, "Failed to fetch Instagram user information", e);
         }

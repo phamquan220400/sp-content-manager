@@ -156,8 +156,8 @@ public class InstagramAdapter implements IPlatformAdapter {
 
         try {
             String accessToken = tokenEncryptionService.decrypt(connectionOpt.get().getAccessTokenEncrypted());
-            
-            // Fetch Instagram user info using Meta Graph API
+
+            // Fetch fresh follower count from Meta Graph API
             String userInfoUrl = UriComponentsBuilder
                     .fromHttpUrl("https://graph.facebook.com/v18.0/" + platformUserId)
                     .queryParam("fields", "id,username,followers_count")
@@ -165,14 +165,20 @@ public class InstagramAdapter implements IPlatformAdapter {
                     .build()
                     .toUriString();
 
+            com.samuel.app.platform.dto.InstagramUserResponse userResponse =
+                    restTemplate.getForObject(userInfoUrl, com.samuel.app.platform.dto.InstagramUserResponse.class);
+
+            long followerCount = (userResponse != null && userResponse.followersCount() != null)
+                    ? userResponse.followersCount()
+                    : (connectionOpt.get().getFollowerCount() != null ? connectionOpt.get().getFollowerCount() : 0L);
+
             // Basic metrics - Instagram Insights API requires additional permissions
-            // This implementation focuses on basic follower count from profile
             ContentMetrics metrics = new ContentMetrics(
                     platformUserId,
                     PlatformType.INSTAGRAM,
                     0L, // Posts count not available with basic permissions
                     0L, // Views count not available with basic permissions
-                    connectionOpt.get().getFollowerCount() != null ? connectionOpt.get().getFollowerCount() : 0L,
+                    followerCount,
                     0L, // Likes count not available with basic permissions
                     LocalDateTime.now()
             );
@@ -233,9 +239,6 @@ public class InstagramAdapter implements IPlatformAdapter {
      * Helper method to find connection by platform user ID.
      */
     private Optional<PlatformConnection> findConnectionByPlatformUserId(String platformUserId) {
-        return platformConnectionRepository.findAll().stream()
-                .filter(conn -> conn.getPlatformType() == PlatformType.INSTAGRAM)
-                .filter(conn -> platformUserId.equals(conn.getPlatformUserId()))
-                .findFirst();
+        return platformConnectionRepository.findByPlatformUserIdAndPlatformType(platformUserId, PlatformType.INSTAGRAM);
     }
 }

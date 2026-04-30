@@ -184,14 +184,25 @@ public class PlatformConnectionController {
      * Handles OAuth callback from Instagram authorization.
      * This endpoint is NOT authenticated (permitAll in SecurityConfig).
      *
-     * @param code  authorization code from Meta
-     * @param state CSRF state token
+     * @param code             authorization code from Meta (absent on user denial)
+     * @param state            CSRF state token (absent on user denial)
+     * @param error            OAuth error code from Meta (present when user denies or error occurs)
+     * @param errorDescription human-readable error detail from Meta
      * @return platform connection response with connection details
      */
     @GetMapping("/instagram/callback")
     public ResponseEntity<ApiResponse<PlatformConnectionResponse>> handleInstagramCallback(
-            @RequestParam String code,
-            @RequestParam String state) {
+            @RequestParam(required = false) String code,
+            @RequestParam(required = false) String state,
+            @RequestParam(required = false) String error,
+            @RequestParam(name = "error_description", required = false) String errorDescription) {
+        if (error != null || code == null || state == null) {
+            String raw = errorDescription != null ? errorDescription : (error != null ? error : "Missing OAuth parameters");
+            String message = raw.replaceAll("[\\r\\n\\t]", " ").strip();
+            if (message.length() > 200) message = message.substring(0, 200);
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(new ApiResponse<>(false, null, message, null, LocalDateTime.now()));
+        }
         PlatformConnectionResponse response = instagramConnectionService.handleCallback(code, state);
         return ResponseEntity.ok(ApiResponse.ok(response));
     }

@@ -13,5 +13,7 @@ public interface PlatformConnectionRepository extends JpaRepository<PlatformConn
 
     Optional<PlatformConnection> findByCreatorProfileIdAndPlatformType(String creatorProfileId, PlatformType platformType);
 
+    Optional<PlatformConnection> findByPlatformUserIdAndPlatformType(String platformUserId, PlatformType platformType);
+
     List<PlatformConnection> findByCreatorProfileId(String creatorProfileId);
 }

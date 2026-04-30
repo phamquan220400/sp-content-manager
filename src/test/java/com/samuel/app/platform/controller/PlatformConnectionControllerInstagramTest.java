@@ -267,4 +267,32 @@ class PlatformConnectionControllerInstagramTest {
         verify(instagramConnectionService).disconnectInstagram(creatorProfileId);
         verify(creatorProfileRepository).findByUserId(userId);
     }
+
+    // ────────────────────────────────────────────────────────────
+    // GET /platforms/instagram/callback — error handling
+    // ────────────────────────────────────────────────────────────
+
+    @Test
+    void should_return_400_when_user_denies_instagram_permissions() throws Exception {
+        // When & Then — Meta redirects with error param, no code/state
+        mockMvc.perform(get("/platforms/instagram/callback")
+                        .param("error", "access_denied")
+                        .param("error_description", "The user denied access"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.message").value("The user denied access"));
+
+        verifyNoInteractions(instagramConnectionService);
+    }
+
+    @Test
+    void should_return_400_when_instagram_callback_missing_code() throws Exception {
+        // When & Then
+        mockMvc.perform(get("/platforms/instagram/callback")
+                        .param("state", "some-state"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.success").value(false));
+
+        verifyNoInteractions(instagramConnectionService);
+    }
 }

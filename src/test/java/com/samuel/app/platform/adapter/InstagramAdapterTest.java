@@ -1,6 +1,10 @@
 package com.samuel.app.platform.adapter;
 
+import com.samuel.app.platform.dto.ContentMetrics;
+import com.samuel.app.platform.dto.InstagramUserResponse;
 import com.samuel.app.platform.dto.RateLimitInfo;
+import com.samuel.app.platform.exception.PlatformApiException;
+import com.samuel.app.platform.model.PlatformConnection;
 import com.samuel.app.platform.repository.PlatformConnectionRepository;
 import com.samuel.app.platform.service.TokenEncryptionService;
 import io.github.resilience4j.circuitbreaker.CircuitBreaker;
@@ -16,6 +20,7 @@ import org.springframework.web.client.RestTemplate;
 
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
+import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
@@ -203,5 +208,80 @@ class InstagramAdapterTest {
 
         // Then
         assertTrue(revenueDataOpt.isEmpty());
+    }
+
+    // ────────────────────────────────────────────────────────────
+    // fetchMetrics
+    // ────────────────────────────────────────────────────────────
+
+    @Test
+    void should_fetch_metrics_and_return_follower_count_from_api() throws Exception {
+        // Given
+        String platformUserId = "ig-user-123";
+        String encryptedToken = "encrypted-token";
+        String decryptedToken = "access-token";
+
+        PlatformConnection connection = new PlatformConnection();
+        connection.setPlatformType(PlatformType.INSTAGRAM);
+        connection.setPlatformUserId(platformUserId);
+        connection.setAccessTokenEncrypted(encryptedToken);
+        connection.setFollowerCount(5000L);
+
+        InstagramUserResponse userResponse = new InstagramUserResponse(platformUserId, "testuser", 8000L);
+
+        when(platformConnectionRepository.findByPlatformUserIdAndPlatformType(platformUserId, PlatformType.INSTAGRAM))
+                .thenReturn(Optional.of(connection));
+        when(tokenEncryptionService.decrypt(encryptedToken)).thenReturn(decryptedToken);
+        when(restTemplate.getForObject(contains(platformUserId), eq(InstagramUserResponse.class)))
+                .thenReturn(userResponse);
+
+        // When
+        Optional<ContentMetrics> result = instagramAdapter.fetchMetrics(platformUserId);
+
+        // Then
+        assertTrue(result.isPresent());
+        assertEquals(8000L, result.get().commentCount()); // follower count stored in commentCount
+        assertEquals(PlatformType.INSTAGRAM, result.get().platformType());
+        verify(restTemplate).getForObject(contains(platformUserId), eq(InstagramUserResponse.class));
+    }
+
+    @Test
+    void should_fall_back_to_cached_follower_count_when_api_returns_null() throws Exception {
+        // Given
+        String platformUserId = "ig-user-456";
+        String encryptedToken = "encrypted-token";
+
+        PlatformConnection connection = new PlatformConnection();
+        connection.setPlatformType(PlatformType.INSTAGRAM);
+        connection.setPlatformUserId(platformUserId);
+        connection.setAccessTokenEncrypted(encryptedToken);
+        connection.setFollowerCount(3000L);
+
+        when(platformConnectionRepository.findByPlatformUserIdAndPlatformType(platformUserId, PlatformType.INSTAGRAM))
+                .thenReturn(Optional.of(connection));
+        when(tokenEncryptionService.decrypt(encryptedToken)).thenReturn("access-token");
+        when(restTemplate.getForObject(contains(platformUserId), eq(InstagramUserResponse.class)))
+                .thenReturn(null); // API returns null
+
+        // When
+        Optional<ContentMetrics> result = instagramAdapter.fetchMetrics(platformUserId);
+
+        // Then
+        assertTrue(result.isPresent());
+        assertEquals(3000L, result.get().commentCount()); // falls back to cached value stored in commentCount
+    }
+
+    @Test
+    void should_return_empty_when_no_connection_found_for_platform_user() throws Exception {
+        // Given
+        String platformUserId = "unknown-user";
+        when(platformConnectionRepository.findByPlatformUserIdAndPlatformType(platformUserId, PlatformType.INSTAGRAM))
+                .thenReturn(Optional.empty());
+
+        // When
+        Optional<ContentMetrics> result = instagramAdapter.fetchMetrics(platformUserId);
+
+        // Then
+        assertTrue(result.isEmpty());
     }
 }
