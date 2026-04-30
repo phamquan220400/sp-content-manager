@@ -1,0 +1,20 @@
+{
+  "name": "spring-project-e2e",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Playwright API E2E tests for spring_project",
+  "scripts": {
+    "test": "playwright test",
+    "test:p0": "playwright test --project=api-p0",
+    "test:p1": "playwright test --project=api-p0 --project=api-p1",
+    "test:nightly": "playwright test --project=api-p0 --project=api-p1 --project=api-nightly",
+    "test:debug": "playwright test --debug",
+    "report": "playwright show-report"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.44.0",
+    "@faker-js/faker": "^8.4.1",
+    "@types/node": "^20.12.0",
+    "typescript": "^5.4.5"
+  }
+}
