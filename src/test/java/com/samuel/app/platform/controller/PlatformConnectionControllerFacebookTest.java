@@ -5,7 +5,7 @@ import com.samuel.app.creator.model.CreatorProfile;
 import com.samuel.app.creator.repository.CreatorProfileRepository;
 import com.samuel.app.platform.adapter.ConnectionStatus;
 import com.samuel.app.platform.adapter.PlatformType;
-import com.samuel.app.platform.dto.InstagramAuthUrlResponse;
+import com.samuel.app.platform.dto.FacebookAuthUrlResponse;
 import com.samuel.app.platform.dto.PlatformConnectionResponse;
 import com.samuel.app.platform.service.FacebookConnectionService;
 import com.samuel.app.platform.service.InstagramConnectionService;
@@ -33,12 +33,12 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 /**
- * Unit tests for PlatformConnectionController — Instagram endpoints.
+ * Unit tests for PlatformConnectionController — Facebook endpoints.
  * Uses standaloneSetup to avoid loading full Spring context.
- * Follows PlatformConnectionControllerTikTokTest pattern.
+ * Follows PlatformConnectionControllerInstagramTest pattern.
  */
 @ExtendWith(MockitoExtension.class)
-class PlatformConnectionControllerInstagramTest {
+class PlatformConnectionControllerFacebookTest {
 
     @Mock
     private YouTubeConnectionService youTubeConnectionService;
@@ -89,73 +89,86 @@ class PlatformConnectionControllerInstagramTest {
     }
 
     // ────────────────────────────────────────────────────────────
-    // GET /platforms/instagram/auth/url
+    // GET /platforms/facebook/auth/url
     // ────────────────────────────────────────────────────────────
 
     @Test
-    void should_return_instagram_auth_url_when_authenticated_user_requests() throws Exception {
+    void should_return_facebook_auth_url_when_authenticated_user_requests() throws Exception {
         // Given
         String userId = "user-123";
-        InstagramAuthUrlResponse expectedResponse = new InstagramAuthUrlResponse(
+        FacebookAuthUrlResponse expectedResponse = new FacebookAuthUrlResponse(
                 "https://www.facebook.com/v18.0/dialog/oauth?client_id=test-id&state=abc123"
         );
 
         when(authentication.getName()).thenReturn(userId);
-        when(instagramConnectionService.getAuthorizationUrl(userId)).thenReturn(expectedResponse);
+        when(facebookConnectionService.getAuthorizationUrl(userId)).thenReturn(expectedResponse);
 
         // When & Then
-        mockMvc.perform(get("/platforms/instagram/auth/url"))
+        mockMvc.perform(get("/platforms/facebook/auth/url"))
                 .andExpect(status().isOk())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data.authorizationUrl").value(expectedResponse.authorizationUrl()));
 
-        verify(instagramConnectionService).getAuthorizationUrl(userId);
+        verify(facebookConnectionService).getAuthorizationUrl(userId);
     }
 
     // ────────────────────────────────────────────────────────────
-    // GET /platforms/instagram/callback
+    // GET /platforms/facebook/callback
     // ────────────────────────────────────────────────────────────
 
     @Test
-    void should_handle_instagram_callback_successfully() throws Exception {
+    void should_handle_facebook_callback_and_return_connection_response() throws Exception {
         // Given
         String code = "auth-code-123";
         String state = "state-456";
         PlatformConnectionResponse expectedResponse = new PlatformConnectionResponse(
-                PlatformType.INSTAGRAM.name(),
+                PlatformType.FACEBOOK.name(),
                 ConnectionStatus.CONNECTED.name(),
-                "ig-user-123",
-                "testuser",
-                10000L,
+                "page-123",
+                "Test Page",
+                50000L,
                 LocalDateTime.now(),
                 LocalDateTime.now()
         );
 
-        when(instagramConnectionService.handleCallback(code, state)).thenReturn(expectedResponse);
+        when(facebookConnectionService.handleCallback(code, state)).thenReturn(expectedResponse);
 
         // When & Then
-        mockMvc.perform(get("/platforms/instagram/callback")
+        mockMvc.perform(get("/platforms/facebook/callback")
                         .param("code", code)
                         .param("state", state))
                 .andExpect(status().isOk())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
                 .andExpect(jsonPath("$.success").value(true))
-                .andExpect(jsonPath("$.data.platformType").value("INSTAGRAM"))
+                .andExpect(jsonPath("$.data.platformType").value("FACEBOOK"))
                 .andExpect(jsonPath("$.data.status").value("CONNECTED"))
-                .andExpect(jsonPath("$.data.platformUserId").value("ig-user-123"))
-                .andExpect(jsonPath("$.data.platformName").value("testuser"))
-                .andExpect(jsonPath("$.data.followerCount").value(10000));
+                .andExpect(jsonPath("$.data.platformUserId").value("page-123"))
+                .andExpect(jsonPath("$.data.platformName").value("Test Page"))
+                .andExpect(jsonPath("$.data.followerCount").value(50000));
 
-        verify(instagramConnectionService).handleCallback(code, state);
+        verify(facebookConnectionService).handleCallback(code, state);
+    }
+
+    @Test
+    void should_return_bad_request_when_facebook_callback_has_error_param() throws Exception {
+        // When & Then — Meta redirects with error param, no code/state
+        mockMvc.perform(get("/platforms/facebook/callback")
+                        .param("error", "access_denied")
+                        .param("error_description", "The user denied access"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.message").value("The user denied access"));
+
+        verifyNoInteractions(facebookConnectionService);
     }
 
     // ────────────────────────────────────────────────────────────
-    // GET /platforms/instagram/connection
+    // GET /platforms/facebook/connection
     // ────────────────────────────────────────────────────────────
 
     @Test
-    void should_return_connection_status_when_user_requests_instagram_status() throws Exception {
+    void should_return_connection_status_when_user_requests_facebook_status() throws Exception {
         // Given
         String userId = "user-789";
         String creatorProfileId = "creator-profile-123";
@@ -165,78 +178,40 @@ class PlatformConnectionControllerInstagramTest {
         creatorProfile.setUserId(userId);
 
         PlatformConnectionResponse expectedResponse = new PlatformConnectionResponse(
-                PlatformType.INSTAGRAM.name(),
+                PlatformType.FACEBOOK.name(),
                 ConnectionStatus.CONNECTED.name(),
-                "ig-user-456",
-                "creator_account",
-                25000L,
+                "page-456",
+                "Creator Page",
+                75000L,
                 LocalDateTime.now(),
                 LocalDateTime.now()
         );
 
         when(authentication.getName()).thenReturn(userId);
         when(creatorProfileRepository.findByUserId(userId)).thenReturn(Optional.of(creatorProfile));
-        when(instagramConnectionService.getConnectionStatus(creatorProfileId)).thenReturn(expectedResponse);
+        when(facebookConnectionService.getConnectionStatus(creatorProfileId)).thenReturn(expectedResponse);
 
         // When & Then
-        mockMvc.perform(get("/platforms/instagram/connection"))
+        mockMvc.perform(get("/platforms/facebook/connection"))
                 .andExpect(status().isOk())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
                 .andExpect(jsonPath("$.success").value(true))
-                .andExpect(jsonPath("$.data.platformType").value("INSTAGRAM"))
+                .andExpect(jsonPath("$.data.platformType").value("FACEBOOK"))
                 .andExpect(jsonPath("$.data.status").value("CONNECTED"))
-                .andExpect(jsonPath("$.data.platformUserId").value("ig-user-456"))
-                .andExpect(jsonPath("$.data.platformName").value("creator_account"))
-                .andExpect(jsonPath("$.data.followerCount").value(25000));
+                .andExpect(jsonPath("$.data.platformUserId").value("page-456"))
+                .andExpect(jsonPath("$.data.platformName").value("Creator Page"))
+                .andExpect(jsonPath("$.data.followerCount").value(75000));
 
-        verify(instagramConnectionService).getConnectionStatus(creatorProfileId);
+        verify(facebookConnectionService).getConnectionStatus(creatorProfileId);
         verify(creatorProfileRepository).findByUserId(userId);
     }
 
-    @Test
-    void should_return_disconnected_status_when_no_instagram_connection() throws Exception {
-        // Given
-        String userId = "user-999";
-        String creatorProfileId = "creator-profile-999";
-
-        CreatorProfile creatorProfile = new CreatorProfile();
-        creatorProfile.setId(creatorProfileId);
-        creatorProfile.setUserId(userId);
-
-        PlatformConnectionResponse expectedResponse = new PlatformConnectionResponse(
-                PlatformType.INSTAGRAM.name(),
-                ConnectionStatus.DISCONNECTED.name(),
-                null,
-                null,
-                null,
-                null,
-                null
-        );
-
-        when(authentication.getName()).thenReturn(userId);
-        when(creatorProfileRepository.findByUserId(userId)).thenReturn(Optional.of(creatorProfile));
-        when(instagramConnectionService.getConnectionStatus(creatorProfileId)).thenReturn(expectedResponse);
-
-        // When & Then
-        mockMvc.perform(get("/platforms/instagram/connection"))
-                .andExpect(status().isOk())
-                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-                .andExpect(jsonPath("$.success").value(true))
-                .andExpect(jsonPath("$.data.platformType").value("INSTAGRAM"))
-                .andExpect(jsonPath("$.data.status").value("DISCONNECTED"))
-                .andExpect(jsonPath("$.data.platformUserId").isEmpty())
-                .andExpect(jsonPath("$.data.platformName").isEmpty())
-                .andExpect(jsonPath("$.data.followerCount").isEmpty());
-
-        verify(instagramConnectionService).getConnectionStatus(creatorProfileId);
-    }
-
     // ────────────────────────────────────────────────────────────
-    // DELETE /platforms/instagram/disconnect
+    // DELETE /platforms/facebook/disconnect
     // ────────────────────────────────────────────────────────────
 
     @Test
-    void should_return_success_when_user_disconnects_instagram() throws Exception {
+    void should_return_success_when_user_disconnects_facebook() throws Exception {
         // Given
         String userId = "user-disconnect";
         String creatorProfileId = "creator-disconnect";
@@ -246,10 +221,10 @@ class PlatformConnectionControllerInstagramTest {
         creatorProfile.setUserId(userId);
 
         PlatformConnectionResponse expectedResponse = new PlatformConnectionResponse(
-                PlatformType.INSTAGRAM.name(),
+                PlatformType.FACEBOOK.name(),
                 ConnectionStatus.DISCONNECTED.name(),
-                "ig-user-disconnected",
-                "disconnected_account",
+                "page-disconnected",
+                "Disconnected Page",
                 null,
                 null,
                 LocalDateTime.now()
@@ -257,47 +232,19 @@ class PlatformConnectionControllerInstagramTest {
 
         when(authentication.getName()).thenReturn(userId);
         when(creatorProfileRepository.findByUserId(userId)).thenReturn(Optional.of(creatorProfile));
-        when(instagramConnectionService.disconnectInstagram(creatorProfileId)).thenReturn(expectedResponse);
+        when(facebookConnectionService.disconnectFacebook(creatorProfileId)).thenReturn(expectedResponse);
 
         // When & Then
-        mockMvc.perform(delete("/platforms/instagram/disconnect"))
+        mockMvc.perform(delete("/platforms/facebook/disconnect"))
                 .andExpect(status().isOk())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
                 .andExpect(jsonPath("$.success").value(true))
-                .andExpect(jsonPath("$.data.platformType").value("INSTAGRAM"))
+                .andExpect(jsonPath("$.data.platformType").value("FACEBOOK"))
                 .andExpect(jsonPath("$.data.status").value("DISCONNECTED"))
-                .andExpect(jsonPath("$.data.platformUserId").value("ig-user-disconnected"))
-                .andExpect(jsonPath("$.data.platformName").value("disconnected_account"));
+                .andExpect(jsonPath("$.data.platformUserId").value("page-disconnected"))
+                .andExpect(jsonPath("$.data.platformName").value("Disconnected Page"));
 
-        verify(instagramConnectionService).disconnectInstagram(creatorProfileId);
+        verify(facebookConnectionService).disconnectFacebook(creatorProfileId);
         verify(creatorProfileRepository).findByUserId(userId);
-    }
-
-    // ────────────────────────────────────────────────────────────
-    // GET /platforms/instagram/callback — error handling
-    // ────────────────────────────────────────────────────────────
-
-    @Test
-    void should_return_400_when_user_denies_instagram_permissions() throws Exception {
-        // When & Then — Meta redirects with error param, no code/state
-        mockMvc.perform(get("/platforms/instagram/callback")
-                        .param("error", "access_denied")
-                        .param("error_description", "The user denied access"))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.success").value(false))
-                .andExpect(jsonPath("$.message").value("The user denied access"));
-
-        verifyNoInteractions(instagramConnectionService);
-    }
-
-    @Test
-    void should_return_400_when_instagram_callback_missing_code() throws Exception {
-        // When & Then
-        mockMvc.perform(get("/platforms/instagram/callback")
-                        .param("state", "some-state"))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.success").value(false));
-
-        verifyNoInteractions(instagramConnectionService);
     }
 }

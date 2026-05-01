@@ -3,10 +3,12 @@ package com.samuel.app.platform.controller;
 import com.samuel.app.creator.model.CreatorProfile;
 import com.samuel.app.creator.repository.CreatorProfileRepository;
 import com.samuel.app.exceptions.ResourceNotFoundException;
+import com.samuel.app.platform.dto.FacebookAuthUrlResponse;
 import com.samuel.app.platform.dto.InstagramAuthUrlResponse;
 import com.samuel.app.platform.dto.PlatformConnectionResponse;
 import com.samuel.app.platform.dto.TikTokAuthUrlResponse;
 import com.samuel.app.platform.dto.YouTubeAuthUrlResponse;
+import com.samuel.app.platform.service.FacebookConnectionService;
 import com.samuel.app.platform.service.InstagramConnectionService;
 import com.samuel.app.platform.service.TikTokConnectionService;
 import com.samuel.app.platform.service.YouTubeConnectionService;
@@ -20,7 +22,7 @@ import java.time.LocalDateTime;
 
 /**
  * REST controller for platform connection management.
- * Handles YouTube, TikTok, and Instagram OAuth flows and connection status operations.
+ * Handles YouTube, TikTok, Instagram, and Facebook OAuth flows and connection status operations.
  */
 @RestController
 @RequestMapping("/platforms")
@@ -29,16 +31,19 @@ public class PlatformConnectionController {
     private final YouTubeConnectionService youTubeConnectionService;
     private final TikTokConnectionService tikTokConnectionService;
     private final InstagramConnectionService instagramConnectionService;
+    private final FacebookConnectionService facebookConnectionService;
     private final CreatorProfileRepository creatorProfileRepository;
 
     public PlatformConnectionController(
             YouTubeConnectionService youTubeConnectionService,
             TikTokConnectionService tikTokConnectionService,
             InstagramConnectionService instagramConnectionService,
+            FacebookConnectionService facebookConnectionService,
             CreatorProfileRepository creatorProfileRepository) {
         this.youTubeConnectionService = youTubeConnectionService;
         this.tikTokConnectionService = tikTokConnectionService;
         this.instagramConnectionService = instagramConnectionService;
+        this.facebookConnectionService = facebookConnectionService;
         this.creatorProfileRepository = creatorProfileRepository;
     }
 
@@ -228,6 +233,69 @@ public class PlatformConnectionController {
     public ResponseEntity<ApiResponse<PlatformConnectionResponse>> disconnectInstagram() {
         String creatorProfileId = getCreatorProfileId();
         PlatformConnectionResponse response = instagramConnectionService.disconnectInstagram(creatorProfileId);
+        return ResponseEntity.ok(ApiResponse.ok(response));
+    }
+
+    /**
+     * Generates Facebook OAuth authorization URL for authenticated user.
+     *
+     * @return response containing Facebook OAuth authorization URL
+     */
+    @GetMapping("/facebook/auth/url")
+    public ResponseEntity<ApiResponse<FacebookAuthUrlResponse>> getFacebookAuthUrl() {
+        String userId = SecurityContextHolder.getContext().getAuthentication().getName();
+        FacebookAuthUrlResponse response = facebookConnectionService.getAuthorizationUrl(userId);
+        return ResponseEntity.ok(ApiResponse.ok(response));
+    }
+
+    /**
+     * Handles OAuth callback from Facebook authorization.
+     * This endpoint is NOT authenticated (permitAll in SecurityConfig).
+     *
+     * @param code             authorization code from Meta (absent on user denial)
+     * @param state            CSRF state token (absent on user denial)
+     * @param error            OAuth error code from Meta (present when user denies or error occurs)
+     * @param errorDescription human-readable error detail from Meta
+     * @return platform connection response with connection details
+     */
+    @GetMapping("/facebook/callback")
+    public ResponseEntity<ApiResponse<PlatformConnectionResponse>> handleFacebookCallback(
+            @RequestParam(required = false) String code,
+            @RequestParam(required = false) String state,
+            @RequestParam(required = false) String error,
+            @RequestParam(name = "error_description", required = false) String errorDescription) {
+        if (error != null || code == null || state == null) {
+            String raw = errorDescription != null ? errorDescription : (error != null ? error : "Missing OAuth parameters");
+            String message = raw.replaceAll("[\\r\\n\\t]", " ").strip();
+            if (message.length() > 200) message = message.substring(0, 200);
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(new ApiResponse<>(false, null, message, null, LocalDateTime.now()));
+        }
+        PlatformConnectionResponse response = facebookConnectionService.handleCallback(code, state);
+        return ResponseEntity.ok(ApiResponse.ok(response));
+    }
+
+    /**
+     * Gets Facebook connection status for authenticated user.
+     *
+     * @return platform connection response with status and details
+     */
+    @GetMapping("/facebook/connection")
+    public ResponseEntity<ApiResponse<PlatformConnectionResponse>> getFacebookConnectionStatus() {
+        String creatorProfileId = getCreatorProfileId();
+        PlatformConnectionResponse response = facebookConnectionService.getConnectionStatus(creatorProfileId);
+        return ResponseEntity.ok(ApiResponse.ok(response));
+    }
+
+    /**
+     * Disconnects Facebook account for authenticated user.
+     *
+     * @return updated platform connection response
+     */
+    @DeleteMapping("/facebook/disconnect")
+    public ResponseEntity<ApiResponse<PlatformConnectionResponse>> disconnectFacebook() {
+        String creatorProfileId = getCreatorProfileId();
+        PlatformConnectionResponse response = facebookConnectionService.disconnectFacebook(creatorProfileId);
         return ResponseEntity.ok(ApiResponse.ok(response));
     }
 

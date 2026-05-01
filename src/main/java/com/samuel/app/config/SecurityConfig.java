@@ -70,6 +70,7 @@ public class SecurityConfig {
                 .requestMatchers("/platforms/youtube/callback").permitAll()
                 .requestMatchers("/platforms/tiktok/callback").permitAll()
                 .requestMatchers("/platforms/instagram/callback").permitAll()
+                .requestMatchers("/platforms/facebook/callback").permitAll()
                 .requestMatchers("/api/v1/auth/register", "/api/v1/auth/login").permitAll()
                 .requestMatchers("/swagger-ui/**", "/v3/api-docs/**", "/swagger-ui.html").permitAll()
                 .anyRequest().authenticated()

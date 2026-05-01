@@ -131,5 +131,10 @@ instagram:
   client-secret: ${INSTAGRAM_CLIENT_SECRET:your-instagram-client-secret}
   redirect-uri: ${INSTAGRAM_REDIRECT_URI:http://localhost:8080/api/v1/platforms/instagram/callback}
 
+facebook:
+  client-id: ${FACEBOOK_CLIENT_ID:your-facebook-client-id}
+  client-secret: ${FACEBOOK_CLIENT_SECRET:your-facebook-client-secret}
+  redirect-uri: ${FACEBOOK_REDIRECT_URI:http://localhost:8080/api/v1/platforms/facebook/callback}
+
 platform:
   token-encryption-key: ${PLATFORM_TOKEN_ENCRYPTION_KEY:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=}
