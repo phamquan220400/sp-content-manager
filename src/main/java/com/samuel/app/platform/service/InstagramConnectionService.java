@@ -5,6 +5,7 @@ import com.samuel.app.creator.repository.CreatorProfileRepository;
 import com.samuel.app.exceptions.ResourceNotFoundException;
 import com.samuel.app.platform.adapter.ConnectionStatus;
 import com.samuel.app.platform.adapter.PlatformType;
+import com.samuel.app.platform.config.PlatformEndpointResolver;
 import com.samuel.app.platform.config.InstagramProperties;
 import com.samuel.app.platform.dto.*;
 import com.samuel.app.platform.exception.PlatformConnectionException;
@@ -37,12 +38,9 @@ import java.util.UUID;
 public class InstagramConnectionService {
 
     private static final String REDIS_STATE_KEY_PREFIX = "oauth:ig:state:";
-    private static final String META_AUTH_URL = "https://www.facebook.com/v18.0/dialog/oauth";
-    private static final String META_TOKEN_URL = "https://graph.facebook.com/v18.0/oauth/access_token";
-    private static final String META_PAGES_URL = "https://graph.facebook.com/v18.0/me/accounts";
-    private static final String META_GRAPH_URL_TEMPLATE = "https://graph.facebook.com/v18.0/%s";
 
     private final InstagramProperties instagramProperties;
+    private final PlatformEndpointResolver platformEndpoints;
     private final StringRedisTemplate stringRedisTemplate;
     private final RestTemplate restTemplate;
     private final PlatformConnectionRepository platformConnectionRepository;
@@ -51,12 +49,14 @@ public class InstagramConnectionService {
 
     public InstagramConnectionService(
             InstagramProperties instagramProperties,
+            PlatformEndpointResolver platformEndpoints,
             StringRedisTemplate stringRedisTemplate,
             RestTemplate restTemplate,
             PlatformConnectionRepository platformConnectionRepository,
             TokenEncryptionService tokenEncryptionService,
             CreatorProfileRepository creatorProfileRepository) {
         this.instagramProperties = instagramProperties;
+        this.platformEndpoints = platformEndpoints;
         this.stringRedisTemplate = stringRedisTemplate;
         this.restTemplate = restTemplate;
         this.platformConnectionRepository = platformConnectionRepository;
@@ -82,11 +82,11 @@ public class InstagramConnectionService {
         // Build Meta OAuth authorization URL
         // Instagram uses client_id (same as YouTube, not TikTok's client_key)
         String authUrl = UriComponentsBuilder
-                .fromHttpUrl(META_AUTH_URL)
+                .fromHttpUrl(platformEndpoints.getOAuthUrl(PlatformType.INSTAGRAM))
                 .queryParam("client_id", instagramProperties.getClientId())
                 .queryParam("redirect_uri", instagramProperties.getRedirectUri())
                 .queryParam("response_type", "code")
-                .queryParam("scope", "instagram_basic,pages_read_engagement,pages_show_list")
+                .queryParam("scope", platformEndpoints.getScopes(PlatformType.INSTAGRAM))
                 .queryParam("state", state)
                 .build()
                 .toUriString();
@@ -241,7 +241,7 @@ public class InstagramConnectionService {
         HttpEntity<MultiValueMap<String, String>> request = new HttpEntity<>(params, headers);
 
         try {
-            InstagramTokenResponse response = restTemplate.postForObject(META_TOKEN_URL, request, InstagramTokenResponse.class);
+            InstagramTokenResponse response = restTemplate.postForObject(platformEndpoints.getTokenUrl(PlatformType.INSTAGRAM), request, InstagramTokenResponse.class);
             if (response == null) {
                 throw new PlatformConnectionException(PlatformType.INSTAGRAM, "Empty response from Meta token endpoint");
             }
@@ -258,7 +258,7 @@ public class InstagramConnectionService {
      */
     private InstagramTokenResponse exchangeForLongLivedToken(String shortLivedToken) {
         String longLivedTokenUrl = UriComponentsBuilder
-                .fromHttpUrl(META_TOKEN_URL)
+                .fromHttpUrl(platformEndpoints.getTokenUrl(PlatformType.INSTAGRAM))
                 .queryParam("grant_type", "fb_exchange_token")
                 .queryParam("client_id", instagramProperties.getClientId())
                 .queryParam("client_secret", instagramProperties.getClientSecret())
@@ -284,7 +284,7 @@ public class InstagramConnectionService {
      */
     private MetaPageResponse getUserPages(String accessToken) {
         String pagesUrl = UriComponentsBuilder
-                .fromHttpUrl(META_PAGES_URL)
+                .fromHttpUrl(platformEndpoints.getInstagram().getPagesUrl())
                 .queryParam("access_token", accessToken)
                 .build()
                 .toUriString();
@@ -307,7 +307,7 @@ public class InstagramConnectionService {
      */
     private MetaIgAccountResponse getPageInstagramAccount(String pageId, String accessToken) {
         String pageIgUrl = UriComponentsBuilder
-                .fromHttpUrl(String.format(META_GRAPH_URL_TEMPLATE, pageId))
+                .fromHttpUrl(String.format(platformEndpoints.getInstagram().getGraphUrlTemplate(), pageId))
                 .queryParam("fields", "instagram_business_account")
                 .queryParam("access_token", accessToken)
                 .build()
@@ -331,7 +331,7 @@ public class InstagramConnectionService {
      */
     private InstagramUserResponse getInstagramUserInfo(String igUserId, String accessToken) {
         String userInfoUrl = UriComponentsBuilder
-                .fromHttpUrl(String.format(META_GRAPH_URL_TEMPLATE, igUserId))
+                .fromHttpUrl(String.format(platformEndpoints.getInstagram().getGraphUrlTemplate(), igUserId))
                 .queryParam("fields", "id,username,followers_count")
                 .queryParam("access_token", accessToken)
                 .build()

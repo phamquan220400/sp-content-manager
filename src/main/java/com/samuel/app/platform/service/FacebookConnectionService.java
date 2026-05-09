@@ -5,6 +5,7 @@ import com.samuel.app.creator.repository.CreatorProfileRepository;
 import com.samuel.app.exceptions.ResourceNotFoundException;
 import com.samuel.app.platform.adapter.ConnectionStatus;
 import com.samuel.app.platform.adapter.PlatformType;
+import com.samuel.app.platform.config.PlatformEndpointResolver;
 import com.samuel.app.platform.config.FacebookProperties;
 import com.samuel.app.platform.dto.FacebookAuthUrlResponse;
 import com.samuel.app.platform.dto.FacebookPageDetailsResponse;
@@ -33,6 +34,7 @@ import java.util.concurrent.TimeUnit;
 public class FacebookConnectionService {
 
     private final FacebookProperties facebookProperties;
+    private final PlatformEndpointResolver platformEndpoints;
     private final StringRedisTemplate stringRedisTemplate;
     private final RestTemplate restTemplate;
     private final PlatformConnectionRepository platformConnectionRepository;
@@ -40,12 +42,14 @@ public class FacebookConnectionService {
     private final CreatorProfileRepository creatorProfileRepository;
 
     public FacebookConnectionService(FacebookProperties facebookProperties,
+                                   PlatformEndpointResolver platformEndpoints,
                                    StringRedisTemplate stringRedisTemplate,
                                    RestTemplate restTemplate,
                                    PlatformConnectionRepository platformConnectionRepository,
                                    TokenEncryptionService tokenEncryptionService,
                                    CreatorProfileRepository creatorProfileRepository) {
         this.facebookProperties = facebookProperties;
+        this.platformEndpoints = platformEndpoints;
         this.stringRedisTemplate = stringRedisTemplate;
         this.restTemplate = restTemplate;
         this.platformConnectionRepository = platformConnectionRepository;
@@ -63,11 +67,11 @@ public class FacebookConnectionService {
         
         // Build Meta OAuth authorization URL
         String authorizationUrl = UriComponentsBuilder
-            .fromHttpUrl("https://www.facebook.com/v18.0/dialog/oauth")
+            .fromHttpUrl(platformEndpoints.getOAuthUrl(PlatformType.FACEBOOK))
             .queryParam("client_id", facebookProperties.getClientId())
             .queryParam("redirect_uri", facebookProperties.getRedirectUri())
             .queryParam("response_type", "code")
-            .queryParam("scope", "pages_show_list,pages_read_engagement,pages_manage_posts")
+            .queryParam("scope", platformEndpoints.getScopes(PlatformType.FACEBOOK))
             .queryParam("state", state)
             .build()
             .toUriString();
@@ -103,14 +107,14 @@ public class FacebookConnectionService {
         HttpEntity<MultiValueMap<String, String>> request = new HttpEntity<>(params, headers);
 
         InstagramTokenResponse shortLivedTokenResponse = restTemplate.postForObject(
-            "https://graph.facebook.com/v18.0/oauth/access_token",
+            platformEndpoints.getTokenUrl(PlatformType.FACEBOOK),
             request,
             InstagramTokenResponse.class
         );
         
         // 5. Exchange short-lived → long-lived user token (GET)
         String longLivedTokenUrl = UriComponentsBuilder
-            .fromHttpUrl("https://graph.facebook.com/v18.0/oauth/access_token")
+            .fromHttpUrl(platformEndpoints.getTokenUrl(PlatformType.FACEBOOK))
             .queryParam("grant_type", "fb_exchange_token")
             .queryParam("client_id", facebookProperties.getClientId())
             .queryParam("client_secret", facebookProperties.getClientSecret())
@@ -124,7 +128,7 @@ public class FacebookConnectionService {
         );
         
         // 6. Get list of Facebook pages (GET /me/accounts)
-        String pagesUrl = "https://graph.facebook.com/v18.0/me/accounts?access_token=" + longLivedTokenResponse.accessToken();
+        String pagesUrl = platformEndpoints.getFacebook().getPagesUrl() + "?access_token=" + longLivedTokenResponse.accessToken();
         MetaPageResponse pagesResponse = restTemplate.getForObject(pagesUrl, MetaPageResponse.class);
         
         // 7. Check if pages exist
@@ -140,7 +144,7 @@ public class FacebookConnectionService {
         
         // 9. Fetch page details to get fan_count
         String pageDetailsUrl = String.format(
-            "https://graph.facebook.com/v18.0/%s?fields=id,name,fan_count,category&access_token=%s",
+            platformEndpoints.getFacebook().getPageDetailUrlTemplate() + "&access_token=%s",
             pageId, pageAccessToken
         );
         FacebookPageDetailsResponse pageDetails = restTemplate.getForObject(pageDetailsUrl, FacebookPageDetailsResponse.class);

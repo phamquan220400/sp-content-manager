@@ -5,6 +5,7 @@ import com.samuel.app.creator.repository.CreatorProfileRepository;
 import com.samuel.app.exceptions.ResourceNotFoundException;
 import com.samuel.app.platform.adapter.ConnectionStatus;
 import com.samuel.app.platform.adapter.PlatformType;
+import com.samuel.app.platform.config.PlatformEndpointResolver;
 import com.samuel.app.platform.config.TikTokProperties;
 import com.samuel.app.platform.dto.PlatformConnectionResponse;
 import com.samuel.app.platform.dto.TikTokAuthUrlResponse;
@@ -40,12 +41,9 @@ import java.util.UUID;
 public class TikTokConnectionService {
 
     private static final String REDIS_STATE_KEY_PREFIX = "oauth:tt:state:";
-    private static final String TIKTOK_AUTH_URL = "https://www.tiktok.com/v2/auth/authorize/";
-    private static final String TIKTOK_TOKEN_URL = "https://open.tiktokapis.com/v2/oauth/token/";
-    private static final String TIKTOK_USER_INFO_URL =
-            "https://open.tiktokapis.com/v2/user/info/?fields=open_id,display_name,follower_count";
 
     private final TikTokProperties tikTokProperties;
+    private final PlatformEndpointResolver platformEndpoints;
     private final StringRedisTemplate stringRedisTemplate;
     private final RestTemplate restTemplate;
     private final PlatformConnectionRepository platformConnectionRepository;
@@ -54,12 +52,14 @@ public class TikTokConnectionService {
 
     public TikTokConnectionService(
             TikTokProperties tikTokProperties,
+            PlatformEndpointResolver platformEndpoints,
             StringRedisTemplate stringRedisTemplate,
             RestTemplate restTemplate,
             PlatformConnectionRepository platformConnectionRepository,
             TokenEncryptionService tokenEncryptionService,
             CreatorProfileRepository creatorProfileRepository) {
         this.tikTokProperties = tikTokProperties;
+        this.platformEndpoints = platformEndpoints;
         this.stringRedisTemplate = stringRedisTemplate;
         this.restTemplate = restTemplate;
         this.platformConnectionRepository = platformConnectionRepository;
@@ -85,11 +85,11 @@ public class TikTokConnectionService {
         // Build TikTok OAuth authorization URL
         // IMPORTANT: TikTok uses "client_key" parameter, not "client_id"
         String authUrl = UriComponentsBuilder
-                .fromHttpUrl(TIKTOK_AUTH_URL)
+                .fromHttpUrl(platformEndpoints.getOAuthUrl(PlatformType.TIKTOK))
                 .queryParam("client_key", tikTokProperties.getClientKey())
                 .queryParam("redirect_uri", tikTokProperties.getRedirectUri())
                 .queryParam("response_type", "code")
-                .queryParam("scope", "user.info.profile,user.info.stats")
+                .queryParam("scope", platformEndpoints.getScopes(PlatformType.TIKTOK))
                 .queryParam("state", state)
                 .build()
                 .toUriString();
@@ -227,7 +227,7 @@ public class TikTokConnectionService {
         HttpEntity<MultiValueMap<String, String>> request = new HttpEntity<>(params, headers);
 
         try {
-            return restTemplate.postForObject(TIKTOK_TOKEN_URL, request, TikTokTokenResponse.class);
+            return restTemplate.postForObject(platformEndpoints.getTokenUrl(PlatformType.TIKTOK), request, TikTokTokenResponse.class);
         } catch (Exception e) {
             throw new PlatformConnectionException(PlatformType.TIKTOK, "Failed to exchange authorization code for tokens", e);
         }
@@ -244,7 +244,7 @@ public class TikTokConnectionService {
 
         try {
             return restTemplate.exchange(
-                    TIKTOK_USER_INFO_URL, HttpMethod.GET, request, TikTokUserInfoResponse.class
+                    platformEndpoints.getTikTok().getUserInfoUrl(), HttpMethod.GET, request, TikTokUserInfoResponse.class
             ).getBody();
         } catch (Exception e) {
             throw new PlatformConnectionException(PlatformType.TIKTOK, "Failed to fetch TikTok user information", e);

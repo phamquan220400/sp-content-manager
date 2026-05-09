@@ -6,6 +6,7 @@ import com.samuel.app.platform.dto.DateRange;
 import com.samuel.app.platform.dto.PlatformCredentials;
 import com.samuel.app.platform.dto.RateLimitInfo;
 import com.samuel.app.platform.dto.RevenueData;
+import com.samuel.app.platform.config.PlatformEndpointResolver;
 import com.samuel.app.platform.exception.PlatformApiException;
 import com.samuel.app.platform.exception.PlatformConnectionException;
 import com.samuel.app.platform.model.PlatformConnection;
@@ -32,7 +33,6 @@ import java.util.Optional;
 @Component("instagramAdapter")
 public class InstagramAdapter implements IPlatformAdapter {
 
-    private static final String META_USER_INFO_URL_TEMPLATE = "https://graph.facebook.com/v18.0/me?fields=id";
     private static final int INSTAGRAM_RATE_LIMIT = 200;
     private static final int INSTAGRAM_RATE_LIMIT_WINDOW_SECONDS = 3600;
 
@@ -40,6 +40,7 @@ public class InstagramAdapter implements IPlatformAdapter {
     private final RateLimiterRegistry rateLimiterRegistry;
     private final PlatformConnectionRepository platformConnectionRepository;
     private final TokenEncryptionService tokenEncryptionService;
+    private final PlatformEndpointResolver platformEndpoints;
     private final RestTemplate restTemplate;
 
     public InstagramAdapter(
@@ -47,11 +48,13 @@ public class InstagramAdapter implements IPlatformAdapter {
             RateLimiterRegistry rateLimiterRegistry,
             PlatformConnectionRepository platformConnectionRepository,
             TokenEncryptionService tokenEncryptionService,
+            PlatformEndpointResolver platformEndpoints,
             RestTemplate restTemplate) {
         this.circuitBreakerRegistry = circuitBreakerRegistry;
         this.rateLimiterRegistry = rateLimiterRegistry;
         this.platformConnectionRepository = platformConnectionRepository;
         this.tokenEncryptionService = tokenEncryptionService;
+        this.platformEndpoints = platformEndpoints;
         this.restTemplate = restTemplate;
     }
 
@@ -159,7 +162,7 @@ public class InstagramAdapter implements IPlatformAdapter {
 
             // Fetch fresh follower count from Meta Graph API
             String userInfoUrl = UriComponentsBuilder
-                    .fromHttpUrl("https://graph.facebook.com/v18.0/" + platformUserId)
+                    .fromHttpUrl(String.format(platformEndpoints.getInstagram().getGraphUrlTemplate(), platformUserId))
                     .queryParam("fields", "id,username,followers_count")
                     .queryParam("access_token", accessToken)
                     .build()
@@ -227,7 +230,7 @@ public class InstagramAdapter implements IPlatformAdapter {
      */
     private void validateConnection(String accessToken) {
         String validationUrl = UriComponentsBuilder
-                .fromHttpUrl(META_USER_INFO_URL_TEMPLATE)
+                .fromHttpUrl(platformEndpoints.getInstagram().getUserInfoUrl())
                 .queryParam("access_token", accessToken)
                 .build()
                 .toUriString();

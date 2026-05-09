@@ -6,6 +6,7 @@ import com.samuel.app.platform.dto.DateRange;
 import com.samuel.app.platform.dto.PlatformCredentials;
 import com.samuel.app.platform.dto.RateLimitInfo;
 import com.samuel.app.platform.dto.RevenueData;
+import com.samuel.app.platform.config.PlatformEndpointResolver;
 import com.samuel.app.platform.exception.PlatformApiException;
 import com.samuel.app.platform.exception.PlatformConnectionException;
 import com.samuel.app.platform.model.PlatformConnection;
@@ -32,7 +33,6 @@ import java.util.Optional;
 @Component("facebookAdapter")
 public class FacebookAdapter implements IPlatformAdapter {
 
-    private static final String META_PAGE_URL_TEMPLATE = "https://graph.facebook.com/v18.0/%s?fields=id,name";
     private static final int FACEBOOK_RATE_LIMIT = 200;
     private static final int FACEBOOK_RATE_LIMIT_WINDOW_SECONDS = 3600;
 
@@ -40,6 +40,7 @@ public class FacebookAdapter implements IPlatformAdapter {
     private final RateLimiterRegistry rateLimiterRegistry;
     private final PlatformConnectionRepository platformConnectionRepository;
     private final TokenEncryptionService tokenEncryptionService;
+    private final PlatformEndpointResolver platformEndpoints;
     private final RestTemplate restTemplate;
 
     public FacebookAdapter(
@@ -47,11 +48,13 @@ public class FacebookAdapter implements IPlatformAdapter {
             RateLimiterRegistry rateLimiterRegistry,
             PlatformConnectionRepository platformConnectionRepository,
             TokenEncryptionService tokenEncryptionService,
+            PlatformEndpointResolver platformEndpoints,
             RestTemplate restTemplate) {
         this.circuitBreakerRegistry = circuitBreakerRegistry;
         this.rateLimiterRegistry = rateLimiterRegistry;
         this.platformConnectionRepository = platformConnectionRepository;
         this.tokenEncryptionService = tokenEncryptionService;
+        this.platformEndpoints = platformEndpoints;
         this.restTemplate = restTemplate;
     }
 
@@ -203,7 +206,7 @@ public class FacebookAdapter implements IPlatformAdapter {
      */
     private void validatePageToken(String pageId, String accessToken) {
         String validationUrl = UriComponentsBuilder
-                .fromHttpUrl(String.format(META_PAGE_URL_TEMPLATE, pageId))
+                .fromHttpUrl(String.format(platformEndpoints.getFacebook().getPageInfoUrlTemplate(), pageId))
                 .queryParam("access_token", accessToken)
                 .build()
                 .toUriString();

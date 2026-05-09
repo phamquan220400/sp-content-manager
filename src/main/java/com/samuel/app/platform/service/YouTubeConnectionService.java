@@ -5,6 +5,7 @@ import com.samuel.app.creator.repository.CreatorProfileRepository;
 import com.samuel.app.exceptions.ResourceNotFoundException;
 import com.samuel.app.platform.adapter.ConnectionStatus;
 import com.samuel.app.platform.adapter.PlatformType;
+import com.samuel.app.platform.config.PlatformEndpointResolver;
 import com.samuel.app.platform.config.YouTubeProperties;
 import com.samuel.app.platform.dto.PlatformConnectionResponse;
 import com.samuel.app.platform.dto.YouTubeAuthUrlResponse;
@@ -38,12 +39,9 @@ import java.util.UUID;
 public class YouTubeConnectionService {
 
     private static final String REDIS_STATE_KEY_PREFIX = "oauth:yt:state:";
-    private static final String GOOGLE_OAUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth";
-    private static final String GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token";
-    private static final String YOUTUBE_CHANNEL_URL = "https://www.googleapis.com/youtube/v3/channels";
-    private static final String YOUTUBE_SCOPES = "https://www.googleapis.com/auth/youtube.readonly https://www.googleapis.com/auth/yt-analytics.readonly";
 
     private final YouTubeProperties youtubeProperties;
+    private final PlatformEndpointResolver platformEndpoints;
     private final StringRedisTemplate stringRedisTemplate;
     private final RestTemplate restTemplate;
     private final PlatformConnectionRepository platformConnectionRepository;
@@ -52,12 +50,14 @@ public class YouTubeConnectionService {
 
     public YouTubeConnectionService(
             YouTubeProperties youtubeProperties,
+            PlatformEndpointResolver platformEndpoints,
             StringRedisTemplate stringRedisTemplate,
             RestTemplate restTemplate,
             PlatformConnectionRepository platformConnectionRepository,
             TokenEncryptionService tokenEncryptionService,
             CreatorProfileRepository creatorProfileRepository) {
         this.youtubeProperties = youtubeProperties;
+        this.platformEndpoints = platformEndpoints;
         this.stringRedisTemplate = stringRedisTemplate;
         this.restTemplate = restTemplate;
         this.platformConnectionRepository = platformConnectionRepository;
@@ -82,11 +82,11 @@ public class YouTubeConnectionService {
 
         // Build Google OAuth authorization URL
         String authUrl = UriComponentsBuilder
-                .fromHttpUrl(GOOGLE_OAUTH_URL)
+                .fromHttpUrl(platformEndpoints.getOAuthUrl(PlatformType.YOUTUBE))
                 .queryParam("client_id", youtubeProperties.getClientId())
                 .queryParam("redirect_uri", youtubeProperties.getRedirectUri())
                 .queryParam("response_type", "code")
-                .queryParam("scope", YOUTUBE_SCOPES)
+                .queryParam("scope", platformEndpoints.getScopes(PlatformType.YOUTUBE))
                 .queryParam("access_type", "offline")
                 .queryParam("prompt", "consent")
                 .queryParam("state", state)
@@ -237,7 +237,7 @@ public class YouTubeConnectionService {
 
         // Make token exchange request
         try {
-            return restTemplate.postForObject(GOOGLE_TOKEN_URL, request, YouTubeTokenResponse.class);
+            return restTemplate.postForObject(platformEndpoints.getTokenUrl(PlatformType.YOUTUBE), request, YouTubeTokenResponse.class);
         } catch (Exception e) {
             throw new PlatformConnectionException(PlatformType.YOUTUBE, "Failed to exchange authorization code for tokens", e);
         }
@@ -254,7 +254,7 @@ public class YouTubeConnectionService {
 
         // Build channel info URL
         String channelUrl = UriComponentsBuilder
-                .fromHttpUrl(YOUTUBE_CHANNEL_URL)
+                .fromHttpUrl(platformEndpoints.getYouTube().getChannelUrl())
                 .queryParam("part", "snippet,statistics")
                 .queryParam("mine", "true")
                 .build()

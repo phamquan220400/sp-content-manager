@@ -7,6 +7,7 @@ import com.samuel.app.platform.dto.PlatformCredentials;
 import com.samuel.app.platform.dto.RateLimitInfo;
 import com.samuel.app.platform.dto.RevenueData;
 import com.samuel.app.platform.dto.TikTokUserInfoResponse;
+import com.samuel.app.platform.config.PlatformEndpointResolver;
 import com.samuel.app.platform.exception.PlatformApiException;
 import com.samuel.app.platform.exception.PlatformConnectionException;
 import com.samuel.app.platform.model.PlatformConnection;
@@ -35,8 +36,6 @@ import java.util.Optional;
 @Component("tiktokAdapter")
 public class TikTokAdapter implements IPlatformAdapter {
 
-    private static final String TIKTOK_USER_INFO_URL =
-            "https://open.tiktokapis.com/v2/user/info/?fields=open_id,display_name,follower_count";
     private static final int TIKTOK_RATE_LIMIT = 50;
     private static final int TIKTOK_RATE_LIMIT_WINDOW_SECONDS = 60;
 
@@ -44,6 +43,7 @@ public class TikTokAdapter implements IPlatformAdapter {
     private final RateLimiterRegistry rateLimiterRegistry;
     private final PlatformConnectionRepository platformConnectionRepository;
     private final TokenEncryptionService tokenEncryptionService;
+    private final PlatformEndpointResolver platformEndpoints;
     private final RestTemplate restTemplate;
 
     public TikTokAdapter(
@@ -51,11 +51,13 @@ public class TikTokAdapter implements IPlatformAdapter {
             RateLimiterRegistry rateLimiterRegistry,
             PlatformConnectionRepository platformConnectionRepository,
             TokenEncryptionService tokenEncryptionService,
+            PlatformEndpointResolver platformEndpoints,
             RestTemplate restTemplate) {
         this.circuitBreakerRegistry = circuitBreakerRegistry;
         this.rateLimiterRegistry = rateLimiterRegistry;
         this.platformConnectionRepository = platformConnectionRepository;
         this.tokenEncryptionService = tokenEncryptionService;
+        this.platformEndpoints = platformEndpoints;
         this.restTemplate = restTemplate;
     }
 
@@ -224,7 +226,7 @@ public class TikTokAdapter implements IPlatformAdapter {
         HttpEntity<Void> request = new HttpEntity<>(headers);
 
         return restTemplate.exchange(
-                TIKTOK_USER_INFO_URL, HttpMethod.GET, request, TikTokUserInfoResponse.class
+                platformEndpoints.getTikTok().getUserInfoUrl(), HttpMethod.GET, request, TikTokUserInfoResponse.class
         ).getBody();
     }
 

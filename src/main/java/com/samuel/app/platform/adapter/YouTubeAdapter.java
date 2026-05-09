@@ -7,6 +7,7 @@ import com.samuel.app.platform.dto.PlatformCredentials;
 import com.samuel.app.platform.dto.RateLimitInfo;
 import com.samuel.app.platform.dto.RevenueData;
 import com.samuel.app.platform.dto.YouTubeChannelResponse;
+import com.samuel.app.platform.config.PlatformEndpointResolver;
 import com.samuel.app.platform.exception.PlatformApiException;
 import com.samuel.app.platform.exception.PlatformConnectionException;
 import com.samuel.app.platform.model.PlatformConnection;
@@ -37,14 +38,13 @@ import java.util.Optional;
 @Component("youtubeAdapter")
 public class YouTubeAdapter implements IPlatformAdapter {
 
-    private static final String YOUTUBE_CHANNEL_URL = "https://www.googleapis.com/youtube/v3/channels";
-    private static final String YOUTUBE_ANALYTICS_URL = "https://youtubeanalytics.googleapis.com/v2/reports";
     private static final int YOUTUBE_DAILY_QUOTA = 10000;
 
     private final CircuitBreakerRegistry circuitBreakerRegistry;
     private final RateLimiterRegistry rateLimiterRegistry;
     private final PlatformConnectionRepository platformConnectionRepository;
     private final TokenEncryptionService tokenEncryptionService;
+    private final PlatformEndpointResolver platformEndpoints;
     private final RestTemplate restTemplate;
 
     public YouTubeAdapter(
@@ -52,11 +52,13 @@ public class YouTubeAdapter implements IPlatformAdapter {
             RateLimiterRegistry rateLimiterRegistry,
             PlatformConnectionRepository platformConnectionRepository,
             TokenEncryptionService tokenEncryptionService,
+            PlatformEndpointResolver platformEndpoints,
             RestTemplate restTemplate) {
         this.circuitBreakerRegistry = circuitBreakerRegistry;
         this.rateLimiterRegistry = rateLimiterRegistry;
         this.platformConnectionRepository = platformConnectionRepository;
         this.tokenEncryptionService = tokenEncryptionService;
+        this.platformEndpoints = platformEndpoints;
         this.restTemplate = restTemplate;
     }
 
@@ -215,7 +217,7 @@ public class YouTubeAdapter implements IPlatformAdapter {
             
             // Build YouTube Analytics API URL
             String analyticsUrl = UriComponentsBuilder
-                    .fromHttpUrl(YOUTUBE_ANALYTICS_URL)
+                    .fromHttpUrl(platformEndpoints.getYouTube().getAnalyticsUrl())
                     .queryParam("ids", "channel==" + platformUserId)
                     .queryParam("startDate", range.startDate().toString())
                     .queryParam("endDate", range.endDate().toString())
@@ -258,7 +260,7 @@ public class YouTubeAdapter implements IPlatformAdapter {
      */
     private YouTubeChannelResponse fetchBasicChannelInfo(String accessToken) {
         String channelUrl = UriComponentsBuilder
-                .fromHttpUrl(YOUTUBE_CHANNEL_URL)
+                .fromHttpUrl(platformEndpoints.getYouTube().getChannelUrl())
                 .queryParam("part", "snippet")
                 .queryParam("mine", "true")
                 .build()
@@ -276,7 +278,7 @@ public class YouTubeAdapter implements IPlatformAdapter {
      */
     private YouTubeChannelResponse fetchChannelMetrics(String accessToken, String channelId) {
         String channelUrl = UriComponentsBuilder
-                .fromHttpUrl(YOUTUBE_CHANNEL_URL)
+                .fromHttpUrl(platformEndpoints.getYouTube().getChannelUrl())
                 .queryParam("part", "statistics")
                 .queryParam("id", channelId)
                 .build()
